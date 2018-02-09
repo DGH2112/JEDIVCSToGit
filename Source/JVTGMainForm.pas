@@ -75,6 +75,7 @@ Type
     BlobsDataSource: TDataSource;
     lblProjectNamePattern: TLabel;
     edtProjectNamePattern: TEdit;
+    pnlMainqq: TPanel;
     Procedure btnGetRevisionsClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
@@ -85,13 +86,16 @@ Type
     FItemCount: Integer;
     FItem: Integer;
     FGitPI : TProcessInfo;
+    FGitRepoPath: String;
   Strict Protected
     Procedure LoadSettings;
     Procedure SaveSettings;
-    Procedure AddFileIntoGit(Const strPath, strSubDir, strRepoFileName, strZipFileName : String);
     Procedure CommitToGit(Const strComment: String; Const dtCommitDateTime: TDateTime);
     Procedure ProcessMsgevent(Const strMsg : String; Var boolAbort : Boolean);
     Procedure IdleEvent;
+    Procedure ExecuteGit(Const strCmdParams : String);
+    Procedure CheckGitRepoPath;
+    Procedure CheckThereIsNoExistingGitRepo;
   Public
   End;
 
@@ -108,7 +112,8 @@ Uses
   CodeSiteLogging,
   {$ENDIF}
   System.IniFiles,
-  System.Zip;
+  System.Zip,
+  System.UITypes;
 
 Type
   (** A method signature for the DGHCreateProcess message event handler. **)
@@ -393,46 +398,6 @@ Begin
   End;
 End;
 
-Procedure TfrmJEDIVCSToGit.AddFileIntoGit(Const strPath, strSubDir, strRepoFileName, strZipFileName : String);
-
-ResourceString
-  strFileNeedsRenaming = 'The file "%s" needs renaming to "%s"!';
-  strDGHCreateProcessFailed = 'DGHCreateProcess Failed (%d)';
-
-Const
-  strMoveParams = 'mv --force %s%s %s%s';
-  strAddParams = 'add %s%s';
-
-Var
-  boolAbort: Boolean;
-  iResult: Integer;
-  strOldFileName: String;
-
-Begin
-  boolAbort := False;
-  FGitPI.strDir := strPath;
-  // Check for file renaming
-  strOldFileName := FFileNames.Values[strRepoFileName];
-  If strOldFileName <> '' Then
-    If CompareText(strOldFileName, strZipFileName) <> 0 Then
-      Begin
-        CodeSite.Send(Format(strFileNeedsRenaming, [strOldFileName, strZipFileName]),
-          boolAbort);
-        FGitPI.strParams := Format(strMoveParams, [strSubDir, strOldFileName, strSubDir, strZipFileName]);
-        ProcessMsgevent(Format('%s%s %s', [FGitPI.strDir, FGitPI.strEXE, FGitPI.strParams]), boolAbort);
-        iResult := DGHCreateProcess(FGitPI, ProcessMsgEvent, IdleEvent);
-        If iResult <> 0 Then
-          Raise Exception.CreateFmt(strDGHCreateProcessFailed, [iResult]);
-      End;
-  FFileNames.Values[strRepoFilename] := strZipFileName;
-  // Add files to Git
-  FGitPI.strParams := Format(strAddParams, [strSubDir, strZipFileName]);
-  ProcessMsgevent(Format('%s%s %s', [FGitPI.strDir, FGitPI.strEXE, FGitPI.strParams]), boolAbort);
-  iResult := DGHCreateProcess(FGitPI, ProcessMsgEvent, IdleEvent);
-  If iResult <> 0 Then
-    Raise Exception.CreateFmt(strDGHCreateProcessFailed, [iResult]);
-End;
-
 (**
 
   This is an on click event handler for the Get Revisions button.
@@ -446,11 +411,9 @@ End;
 Procedure TfrmJEDIVCSToGit.btnGetRevisionsClick(Sender: TObject);
 
 ResourceString
-  strGitRepositoryPathDoesNotExist = 'The Git Repository path "%s" does not exist!';
-  strGitRepositoryAlreadyExists = 'A git repository already exists in "%s"!';
+  strFileNeedsRenaming = 'The file "%s" needs renaming to "%s"!';
 
 Const
-  strGitDir = '.git';
   strBlogZip = 'Blog.zip';
   strFileData = 'FileData';
   strModuleName = 'Module Name';
@@ -458,37 +421,27 @@ Const
   strComment_i = 'comment_i';
   strTSTAMP = 'TSTAMP';
   strRecOfRecs = '%d of %d';
+  strMoveParams = 'mv -v %s%s %s%s';
+  strAddParams = 'add -v %s%s';
+  strGitInit = 'init';
 
 Var
   strZipFileName: String;
   Z: TZipFile;
   iFile: Integer;
-  strGitRepoPath: String;
-  iResult: Integer;
-  boolAbort: Boolean;
+  strOldFileName: String;
+  strRepoFileName: String;
+  strComment: String;
+  strSubDir: String;
 
 Begin
-  // Check Git Repo Path
-  If (Length(edtGitRepoPath.Text) = 0) Or (Not DirectoryExists(edtGitRepoPath.Text)) Then
-    Raise Exception.CreateFmt(strGitRepositoryPathDoesNotExist, [edtGitRepoPath.Text]);
-  strGitRepoPath := edtGitRepoPath.Text;
-  If strGitRepoPath[Length(strGitRepoPath)] <> '\' Then
-    strGitRepoPath := strGitRepoPath + '\';
-  // Check there is no existing Git Repo
-  If DirectoryExists(strGitRepoPath + strGitDir) Then
-    Raise Exception.CreateFmt(strGitRepositoryAlreadyExists, [strGitRepoPath]);
-  // Create new Git Repo
-  FGitPI.strDir := strGitRepoPath;
-  FGitPI.strParams := 'init';
-  ProcessMsgevent(Format('%s%s %s', [FGitPI.strDir, FGitPI.strEXE, FGitPI.strParams]), boolAbort);
-  iResult := DGHCreateProcess(FGitPI, ProcessMsgEvent, IdleEvent);
-  If iResult <> 0 Then
-    Raise Exception.CreateFmt('DGHCreateProcess Failed (%d)', [iResult]);
-  // Extract Revisions
+  CheckGitRepoPath;
+  CheckThereIsNoExistingGitRepo;
+  ExecuteGit(strGitInit);
   RevisionsDataSource.DataSet.Last;
   FItemCount := RevisionsDataSource.DataSet.RecordCount;
   RevisionsDataSource.DataSet.First;
-  strZipFileName := strGitRepoPath + strBlogZip;
+  strZipFileName := FGitRepoPath + strBlogZip;
   While Not RevisionsDataSource.DataSet.Eof Do
     Begin
       BlobsDataSource.DataSet.First;
@@ -500,12 +453,20 @@ Begin
             Z.Open(strZipFileName, zmRead);
             For iFile := 0 To Z.FileCount - 1 Do
               Begin
-                //: @todo Check rename - extract single file at a time
-                Z.Extract(Z.FileName[iFile], strGitRepoPath + 'Source\');
-                AddFileIntoGit(strGitRepoPath, 'Source\',
+                strSubDir := 'Source\';
+                strRepoFileName :=
                   RevisionsDataSource.DataSet.FieldByName(strModuleName).AsString + '.' +
-                    BlobsDataSource.DataSet.FieldByName(strExtension).AsString,
-                  Z.FileName[iFile]);
+                  BlobsDataSource.DataSet.FieldByName(strExtension).AsString;
+                strOldFileName := FFileNames.Values[strRepoFileName];
+                If strOldFileName <> '' Then
+                  If CompareText(strOldFileName, Z.FileName[iFile]) <> 0 Then
+                    Begin
+                      CodeSite.Send(Format(strFileNeedsRenaming, [strOldFileName, Z.FileName[iFile]]));
+                      ExecuteGit(Format(strMoveParams, [strSubDir, strOldFileName, strSubDir, Z.FileName[iFile]]));
+                    End;
+                FFileNames.Values[strRepoFilename] := Z.FileName[iFile];
+                Z.Extract(Z.FileName[iFile], FGitRepoPath + strSubDir);
+                ExecuteGit(Format(strAddParams, [strSubDir, Z.FileName[iFile]]));
               End;
             Z.Close;
           Finally
@@ -513,51 +474,67 @@ Begin
           End;
           BlobsDataSource.DataSet.Next;
         End;
-      CommitToGit(RevisionsDataSource.DataSet.FieldByName(strComment_i).AsString,
-        RevisionsDataSource.DataSet.FieldByName(strTSTAMP).AsDateTime);
+      strComment := RevisionsDataSource.DataSet.FieldByName(strComment_i).AsString;
+      strComment := StringReplace(strComment, '"', '''', [rfReplaceAll]);
+      strComment := StringReplace(strComment, #13, '', [rfReplaceAll]);
+      strComment := StringReplace(strComment, #10, '\n', [rfReplaceAll]);
+      CommitToGit(strComment, RevisionsDataSource.DataSet.FieldByName(strTSTAMP).AsDateTime);
       Inc(FItem);
       StatusBar.Panels[0].Text := Format(strRecOfRecs, [FItem, FItemCount]);
       RevisionsDataSource.DataSet.Next;
     End;
 End;
 
+(**
+
+  This method checks the Git Repository Path to ensure its a valid directory.
+
+  @precon  None.
+  @postcon Raises an exception if the path does not exist or is empty.
+
+**)
+Procedure TfrmJEDIVCSToGit.CheckGitRepoPath;
+
+ResourceString
+  strGitRepositoryPathDoesNotExist = 'The Git Repository path "%s" does not exist!';
+
+Begin
+  If (Length(edtGitRepoPath.Text) = 0) Or (Not DirectoryExists(edtGitRepoPath.Text)) Then
+    Raise Exception.CreateFmt(strGitRepositoryPathDoesNotExist, [edtGitRepoPath.Text]);
+  FGitRepoPath := edtGitRepoPath.Text;
+  If FGitRepoPath[Length(FGitRepoPath)] <> '\' Then
+    FGitRepoPath := FGitRepoPath + '\';
+End;
+
+(**
+
+  This method checks that there is no existing GIT repository in the repository path.
+
+  @precon  None.
+  @postcon Raises an exception if there is already a repository.
+
+**)
+Procedure TfrmJEDIVCSToGit.CheckThereIsNoExistingGitRepo;
+
+ResourceString
+  strGitRepositoryAlreadyExists = 'A git repository already exists in "%s"!';
+
+Const
+  strGitDir = '.git';
+
+Begin
+  If DirectoryExists(FGitRepoPath + strGitDir) Then
+    Raise Exception.CreateFmt(strGitRepositoryAlreadyExists, [FGitRepoPath]);
+End;
+
 Procedure TfrmJEDIVCSToGit.CommitToGit(Const strComment: String; Const dtCommitDateTime: TDateTime);
 
 Const
-  strValidFails : Array[0..1] Of String = (
-    'nothing added to commit but untracked files present',
-    'no changes added to commit'
-  );
-  strCommitDate = 'commit --date "%s" -m "%s"';
+  strCommitDate = 'commit -v --date "%s" -m "%s"';
   strDateFmt = 'dd/mmm/yyyy HH:nn:ss';
 
-  Function IsvalidFail : Boolean;
-
-  Var
-    i: Integer;
-
-  Begin
-    Result := False;
-    For i := Low(strValidFails) To High(strValidFails) Do
-      If CompareText(FLastMessage, strValidFails[i]) = 0 Then
-        Begin
-          Result := True;
-          Break;
-        End;
-  End;
-  
-Var
-  iResult: Integer;
-  boolAbort: Boolean;
-
 Begin
-  FGitPI.strParams := Format(strCommitDate, [
-    FormatDateTime(strDateFmt, dtCommitDateTime), strComment]);
-  ProcessMsgevent(Format('%s%s %s', [FGitPI.strDir, FGitPI.strEXE, FGitPI.strParams]), boolAbort);
-  iResult := DGHCreateProcess(FGitPI, ProcessMsgEvent, IdleEvent);
-  If iResult <> 0 Then
-    If Not IsValidFail Then
-      Raise Exception.CreateFmt('DGHCreateProcess Failed (%d)', [iResult]);
+  ExecuteGit(Format(strCommitDate, [FormatDateTime(strDateFmt, dtCommitDateTime), strComment]));
 End;
 
 (**
@@ -591,6 +568,38 @@ Begin
   RevisionsFDQuery.Active := True;
   For iColumn := 0 To DBGrid.Columns.Count - 1 Do
     DBGrid.Columns[iColumn].Width := aiColumnWidths[iColumn];
+End;
+
+(**
+
+  This method executes GIT and captures any errors and prompts for an action.
+
+  @precon  None.
+  @postcon Executes GIT and captures any errors and prompts for an action.
+
+  @param   strCmdParams as a String as a constant
+
+**)
+Procedure TfrmJEDIVCSToGit.ExecuteGit(Const strCmdParams: String);
+
+ResourceString
+  strMsg = 'The last GIT command (%s) failed:'#13#10'%s';
+
+Var
+  boolAbort : Boolean;
+  iResult: Integer;
+  
+Begin
+  FGitPI.strDir := FGitRepoPath;
+  FGitPI.strParams := strCmdParams;
+  ProcessMsgevent(Format('%s%s %s', [FGitPI.strDir, ExtractFileName(FGitPI.strEXE), FGitPI.strParams]), boolAbort);
+  FLastMessage := '';
+  iResult := DGHCreateProcess(FGitPI, ProcessMsgEvent, IdleEvent);
+  If iResult <> 0 Then
+    Case MessageDlg(Format(strMsg, [strCmdParams, FLastMessage]), mtError, [mbIgnore, mbAbort], 0) Of
+      mrAbort: Abort;
+    End;
+  ProcessMsgevent(#13#10, boolAbort);
 End;
 
 (**
@@ -722,7 +731,11 @@ Begin
       Begin
         mmoGitOutput.Lines.Append(sl[iLine]);
         If sl[iLine] <> '' Then
-          FLastMessage := sl[iLine];
+          Begin
+            If FLastMessage <> '' Then
+              FLastMessage := FLastMessage + #13#10;
+            FLastMessage := FLastMessage + sl[iLine];
+          End;
       End;
   Finally
     sl.Free;
@@ -744,7 +757,7 @@ Var
   iColumn : Integer;
 
 Begin
-  iniFile := TMemIniFile.Create(ChangeFileExt(ParamStr(0), '.ini'));
+  iniFile := TMemIniFile.Create(ChangeFileExt(ParamStr(0), strIniExt));
   Try
     iniFile.WriteInteger(strSetupIniSection, strTopKey, Top);
     iniFile.WriteInteger(strSetupIniSection, strLeftKey, Left);
