@@ -105,7 +105,7 @@
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
-        <DCCReference Include="JEDIVCSToGitMainForm.pas">
+        <DCCReference Include="Source\JVTGMainForm.pas">
             <Form>frmJEDIVCSToGit</Form>
             <FormType>dfm</FormType>
         </DCCReference>

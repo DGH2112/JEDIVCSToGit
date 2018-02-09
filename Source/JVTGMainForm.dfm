@@ -17,18 +17,20 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
   TextHeight = 16
   object Splitter: TSplitter
     Left = 0
-    Top = 428
+    Top = 409
     Width = 840
     Height = 3
     Cursor = crVSplit
     Align = alBottom
     ResizeStyle = rsUpdate
+    ExplicitLeft = 8
+    ExplicitTop = 415
   end
   object mmoGitOutput: TMemo
     Left = 0
-    Top = 431
+    Top = 412
     Width = 840
-    Height = 89
+    Height = 108
     Align = alBottom
     Font.Charset = ANSI_CHARSET
     Font.Color = clWindowText
@@ -38,6 +40,7 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
     ParentFont = False
     ScrollBars = ssBoth
     TabOrder = 0
+    ExplicitTop = 409
   end
   object pnlTop: TPanel
     Left = 0
@@ -105,16 +108,17 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
     Left = 0
     Top = 41
     Width = 840
-    Height = 387
+    Height = 368
     Align = alClient
     BevelOuter = bvNone
     Caption = 'pnlMain'
     TabOrder = 3
+    ExplicitHeight = 387
     object DBGrid: TDBGrid
       Left = 0
       Top = 0
       Width = 840
-      Height = 273
+      Height = 254
       Align = alClient
       DataSource = RevisionsDataSource
       TabOrder = 0
@@ -126,7 +130,7 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
     end
     object BlobsGrid: TDBGrid
       Left = 0
-      Top = 273
+      Top = 254
       Width = 840
       Height = 114
       Align = alBottom

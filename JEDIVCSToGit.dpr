@@ -2,7 +2,7 @@ program JEDIVCSToGit;
 
 uses
   Vcl.Forms,
-  JEDIVCSToGitMainForm in 'JEDIVCSToGitMainForm.pas' {frmJEDIVCSToGit};
+  JVTGMainForm in 'Source\JVTGMainForm.pas' {frmJEDIVCSToGit};
 
 {$R *.res}
 
