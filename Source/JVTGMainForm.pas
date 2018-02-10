@@ -5,7 +5,7 @@
 
   @Author  David Hoyle
   @Version 1.0
-  @Date    09 Feb 2018
+  @Date    10 Feb 2018
   
 **)
 Unit JVTGMainForm;
@@ -76,6 +76,7 @@ Type
     lblProjectNamePattern: TLabel;
     edtProjectNamePattern: TEdit;
     pnlMainqq: TPanel;
+    DBGridSplitter: TSplitter;
     Procedure btnGetRevisionsClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
@@ -182,6 +183,68 @@ Const
 
 Var
   boolAbort: Boolean;
+
+  (**
+
+    This method checks that the process directory and executable exists.
+
+    @precon  None.
+    @postcon Raises exceptions if either the process directory or EXE are not valid.
+
+  **)
+  Procedure CheckProcess;
+
+  Begin
+    If Not DirectoryExists(Process.strDir) Then
+      Raise EDGHCreateProcessException.CreateFmt(strDirectoryNotFound, [Process.strDir]);
+    If Not FileExists(Process.strEXE) Then
+      Begin
+        If Not DGHFindOnPath(Process.strEXE, '') Then
+          Raise EDGHCreateProcessException.CreateFmt(strEXENotFound, [Process.strEXE]);
+      End;
+  End;
+
+  (**
+
+    This procedure configures the security attributes for the progress to be created.
+
+    @precon  None.
+    @postcon The passed security attributes are configured.
+
+    @param   SecurityAttrib as a TSecurityAttributes as a reference
+
+  **)
+  Procedure ConfigSecurityAttrib(Var SecurityAttrib : TSecurityAttributes);
+
+  Begin
+    FillChar(SecurityAttrib, SizeOf(SecurityAttrib), 0);
+    SecurityAttrib.nLength := SizeOf(SecurityAttrib);
+    SecurityAttrib.bInheritHandle := True;
+    SecurityAttrib.lpSecurityDescriptor := Nil;
+  End;
+
+  (**
+
+    This procedure configures the startup information for the new process to be created.
+
+    @precon  None.
+    @postcon The startup information is configured.
+
+    @param   StartupInfo as a TStartupInfo as a reference
+    @param   hWrite      as a THandle as a constant
+
+  **)
+  Procedure ConfigStartUp(Var StartupInfo : TStartupInfo; Const hWrite : THandle);
+
+  Begin
+    FillChar(StartupInfo, SizeOf(TStartupInfo), 0);
+    StartupInfo.cb := SizeOf(TStartupInfo);
+    StartupInfo.cb := SizeOf(StartupInfo);
+    StartupInfo.dwFlags := STARTF_USESHOWWINDOW or STARTF_USESTDHANDLES;
+    StartupInfo.wShowWindow := SW_HIDE;
+    StartupInfo.hStdOutput := hWrite;
+    StartupInfo.hStdError := hWrite;
+  End;
 
   (**
 
@@ -292,28 +355,13 @@ Var
 Begin
   Result := 0;
   boolAbort := False;
-  FillChar(SecurityAttrib, SizeOf(SecurityAttrib), 0);
-  SecurityAttrib.nLength := SizeOf(SecurityAttrib);
-  SecurityAttrib.bInheritHandle := True;
-  SecurityAttrib.lpSecurityDescriptor := nil;
+  ConfigSecurityAttrib(SecurityAttrib);
   Win32Check(CreatePipe(hRead, hWrite, @SecurityAttrib, iPipeSize));
   Try
     If Process.boolEnabled Then
       Try
-        If Not DirectoryExists(Process.strDir) Then
-          Raise EDGHCreateProcessException.CreateFmt(strDirectoryNotFound, [Process.strDir]);
-        If Not FileExists(Process.strEXE) Then
-          Begin
-            If Not DGHFindOnPath(Process.strEXE, '') Then
-              Raise EDGHCreateProcessException.CreateFmt(strEXENotFound, [Process.strEXE]);
-          End;
-        FillChar(StartupInfo, SizeOf(TStartupInfo), 0);
-        StartupInfo.cb := SizeOf(TStartupInfo);
-        StartupInfo.cb          := SizeOf(StartupInfo);
-        StartupInfo.dwFlags     := STARTF_USESHOWWINDOW or STARTF_USESTDHANDLES;
-        StartupInfo.wShowWindow := SW_HIDE;
-        StartupInfo.hStdOutput  := hWrite;
-        StartupInfo.hStdError   := hWrite;
+        CheckProcess;
+        ConfigStartUp(StartupInfo, hWrite);
         RunProcess(SecurityAttrib, StartupInfo, hRead);
       Except
         On E : EDGHCreateProcessException Do
@@ -345,26 +393,24 @@ End;
 **)
 Function DGHFindOnPath(var strEXEName : String; Const strDirs : String) : Boolean;
 
-Const
-  strPathEnVar = 'path';
+  (**
 
-Var
-  slPaths : TStringList;
-  iPath: Integer;
-  recSearch: TSearchRec;
-  iResult: Integer;
-  iLength: Integer;
-  strPath, strExPath : String;
-  iSize: Integer;
+    This procedure checks the paths and deletes empty paths and ensures the rest have a trailing
+    backslash.
 
-Begin
-  Result := False;
-  slPaths := TStringList.Create;
-  Try
-    slPaths.Text := GetEnvironmentVariable(strPathEnVar);
-    If strDirs <> '' Then
-      slPaths.Text := strDirs + ';' + slPaths.Text;
-    slPaths.Text := StringReplace(slPaths.Text, ';', #13#10, [rfReplaceAll]);
+    @precon  slPaths must be a valid instance.
+    @postcon Empty paths are deleted and all paths are terminated with a backslash.
+
+    @param   slPaths as a TStringList as a constant
+
+  **)
+  Procedure CheckPaths(Const slPaths : TStringList);
+
+  Var
+    iPath: Integer;
+    iLength: Integer;
+
+  Begin
     For iPath := slPaths.Count - 1 DownTo 0 Do
       Begin
         iLength := Length(slPaths[iPath]);
@@ -374,6 +420,31 @@ Begin
           If slPaths[iPath][iLength] <> '\' Then
             slPaths[iPath] := slPaths[iPath] + '\';
       End;
+  End;
+
+  (**
+
+    This function searches the paths for the executeable and returns true if found and strEXEName is
+    updated.
+
+    @precon  slPaths must be a valid instance.
+    @postcon If found, returns true and strEXEName is updated.
+
+    @param   slPaths as a TStringList as a constant
+    @return  a Boolean
+
+  **)
+  Function SearchPaths(Const slPaths : TStringList) : Boolean;
+
+  Var
+    iPath: Integer;
+    i : Integer;
+    recSearch: TSearchRec;
+    strPath, strExPath : String;
+    iSize: Integer;
+    
+  Begin
+    Result := False;
     strEXEName := ExtractFileName(strEXEName);
     For iPath := 0 To slPaths.Count - 1 Do
       Begin
@@ -381,9 +452,9 @@ Begin
         SetLength(strExPath, MAX_PATH);
         iSize := ExpandEnvironmentStrings(PChar(strPath), PChar(strExPath), MAX_PATH);
         SetLength(strExPath, Pred(iSize));
-        iResult := FindFirst(strExPath + strEXEName, faAnyFile, recSearch);
+        i := FindFirst(strExPath + strEXEName, faAnyFile, recSearch);
         Try
-          If iResult = 0 Then
+          If i = 0 Then
             Begin
               strEXEName := strExPath + strEXEName;
               Result := True;
@@ -393,6 +464,23 @@ Begin
           FindClose(recSearch);
         End;
       End;
+  End;
+
+Const
+  strPathEnVar = 'path';
+
+Var
+  slPaths : TStringList;
+
+Begin
+  slPaths := TStringList.Create;
+  Try
+    slPaths.Text := GetEnvironmentVariable(strPathEnVar);
+    If strDirs <> '' Then
+      slPaths.Text := strDirs + ';' + slPaths.Text;
+    slPaths.Text := StringReplace(slPaths.Text, ';', #13#10, [rfReplaceAll]);
+    CheckPaths(slPaths);
+    Result := SearchPaths(slPaths);
   Finally
     slPaths.Free;
   End;
@@ -412,6 +500,7 @@ Procedure TfrmJEDIVCSToGit.btnGetRevisionsClick(Sender: TObject);
 
 ResourceString
   strFileNeedsRenaming = 'The file "%s" needs renaming to "%s"!';
+  strExtracting = 'Extracting: %s';
 
 Const
   strBlogZip = 'Blog.zip';
@@ -420,10 +509,12 @@ Const
   strExtension = 'Extension';
   strComment_i = 'comment_i';
   strTSTAMP = 'TSTAMP';
-  strRecOfRecs = '%d of %d';
+  strRecOfRecs = '%d of %d, Elapsed time: %1.1n seconds...';
   strMoveParams = 'mv -v %s%s %s%s';
   strAddParams = 'add -v %s%s';
   strGitInit = 'init';
+  strTmpSource = 'Source\';
+  dblMSInSec = 1000.0;
 
 Var
   strZipFileName: String;
@@ -431,58 +522,66 @@ Var
   iFile: Integer;
   strOldFileName: String;
   strRepoFileName: String;
-  strComment: String;
   strSubDir: String;
+  iStartTime: UInt64;
+  boolAbort: Boolean;
 
 Begin
   CheckGitRepoPath;
   CheckThereIsNoExistingGitRepo;
   ExecuteGit(strGitInit);
-  RevisionsDataSource.DataSet.Last;
-  FItemCount := RevisionsDataSource.DataSet.RecordCount;
-  RevisionsDataSource.DataSet.First;
-  strZipFileName := FGitRepoPath + strBlogZip;
-  While Not RevisionsDataSource.DataSet.Eof Do
-    Begin
-      BlobsDataSource.DataSet.First;
-      While Not BlobsDataSource.DataSet.Eof Do
-        Begin
-         (BlobsDataSource.DataSet.FieldByName(strFileData) As TBlobField).SaveToFile(strZipFileName);
-          Z := TZipFile.Create;
-          Try
-            Z.Open(strZipFileName, zmRead);
-            For iFile := 0 To Z.FileCount - 1 Do
-              Begin
-                strSubDir := 'Source\';
-                strRepoFileName :=
-                  RevisionsDataSource.DataSet.FieldByName(strModuleName).AsString + '.' +
-                  BlobsDataSource.DataSet.FieldByName(strExtension).AsString;
-                strOldFileName := FFileNames.Values[strRepoFileName];
-                If strOldFileName <> '' Then
-                  If CompareText(strOldFileName, Z.FileName[iFile]) <> 0 Then
-                    Begin
-                      CodeSite.Send(Format(strFileNeedsRenaming, [strOldFileName, Z.FileName[iFile]]));
-                      ExecuteGit(Format(strMoveParams, [strSubDir, strOldFileName, strSubDir, Z.FileName[iFile]]));
-                    End;
-                FFileNames.Values[strRepoFilename] := Z.FileName[iFile];
-                Z.Extract(Z.FileName[iFile], FGitRepoPath + strSubDir);
-                ExecuteGit(Format(strAddParams, [strSubDir, Z.FileName[iFile]]));
-              End;
-            Z.Close;
-          Finally
-            Z.Free;
+  DBGrid.ReadOnly := True;
+  BlobsGrid.ReadOnly := True;
+  Try
+    iStartTime := GetTickCount64;
+    RevisionsDataSource.DataSet.Last;
+    FItemCount := RevisionsDataSource.DataSet.RecordCount;
+    RevisionsDataSource.DataSet.First;
+    strZipFileName := FGitRepoPath + strBlogZip;
+    While Not RevisionsDataSource.DataSet.Eof Do
+      Begin
+        BlobsDataSource.DataSet.First;
+        While Not BlobsDataSource.DataSet.Eof Do
+          Begin
+           (BlobsDataSource.DataSet.FieldByName(strFileData) As TBlobField).SaveToFile(strZipFileName);
+            Z := TZipFile.Create;
+            Try
+              Z.Open(strZipFileName, zmRead);
+              For iFile := 0 To Z.FileCount - 1 Do
+                Begin
+                  strSubDir := strTmpSource;
+                  strRepoFileName :=
+                    RevisionsDataSource.DataSet.FieldByName(strModuleName).AsString + '.' +
+                    BlobsDataSource.DataSet.FieldByName(strExtension).AsString;
+                  strOldFileName := FFileNames.Values[strRepoFileName];
+                  If strOldFileName <> '' Then
+                    If CompareText(strOldFileName, Z.FileName[iFile]) <> 0 Then
+                      Begin
+                        CodeSite.Send(Format(strFileNeedsRenaming, [strOldFileName, Z.FileName[iFile]]));
+                        ExecuteGit(Format(strMoveParams, [strSubDir, strOldFileName, strSubDir, Z.FileName[iFile]]));
+                      End;
+                  FFileNames.Values[strRepoFilename] := Z.FileName[iFile];
+                  Z.Extract(Z.FileName[iFile], FGitRepoPath + strSubDir);
+                  ProcessMsgevent(Format(strExtracting, [FGitRepoPath + strSubDir + Z.FileName[iFile]]), boolAbort);
+                  ExecuteGit(Format(strAddParams, [strSubDir, Z.FileName[iFile]]));
+                End;
+              Z.Close;
+            Finally
+              Z.Free;
+            End;
+            BlobsDataSource.DataSet.Next;
           End;
-          BlobsDataSource.DataSet.Next;
-        End;
-      strComment := RevisionsDataSource.DataSet.FieldByName(strComment_i).AsString;
-      strComment := StringReplace(strComment, '"', '''', [rfReplaceAll]);
-      strComment := StringReplace(strComment, #13, '', [rfReplaceAll]);
-      strComment := StringReplace(strComment, #10, '\n', [rfReplaceAll]);
-      CommitToGit(strComment, RevisionsDataSource.DataSet.FieldByName(strTSTAMP).AsDateTime);
-      Inc(FItem);
-      StatusBar.Panels[0].Text := Format(strRecOfRecs, [FItem, FItemCount]);
-      RevisionsDataSource.DataSet.Next;
-    End;
+        CommitToGit(RevisionsDataSource.DataSet.FieldByName(strComment_i).AsString,
+          RevisionsDataSource.DataSet.FieldByName(strTSTAMP).AsDateTime);
+        Inc(FItem);
+        StatusBar.Panels[0].Text := Format(strRecOfRecs, [FItem, FItemCount,
+          Int(GetTickCount64 - iStartTime) / dblMSInSec]);
+        RevisionsDataSource.DataSet.Next;
+      End;
+  Finally
+    DBGrid.ReadOnly := False;
+    BlobsGrid.ReadOnly := False;;
+  End;
 End;
 
 (**
@@ -527,14 +626,31 @@ Begin
     Raise Exception.CreateFmt(strGitRepositoryAlreadyExists, [FGitRepoPath]);
 End;
 
+(**
+
+  This method commits the current staged files to git using the given comment and time and date stamp.
+
+  @precon  None.
+  @postcon The currently staged files are committed.
+
+  @param   strComment       as a String as a constant
+  @param   dtCommitDateTime as a TDateTime as a constant
+
+**)
 Procedure TfrmJEDIVCSToGit.CommitToGit(Const strComment: String; Const dtCommitDateTime: TDateTime);
 
 Const
   strCommitDate = 'commit -v --date "%s" -m "%s"';
   strDateFmt = 'dd/mmm/yyyy HH:nn:ss';
 
+Var
+  strCleanComment : String;
+  
 Begin
-  ExecuteGit(Format(strCommitDate, [FormatDateTime(strDateFmt, dtCommitDateTime), strComment]));
+  strCleanComment := StringReplace(strComment, '"', '''', [rfReplaceAll]);
+  strCleanComment := StringReplace(strCleanComment, #13, '', [rfReplaceAll]);
+  strCleanComment := StringReplace(strCleanComment, #10, '\n', [rfReplaceAll]);
+  ExecuteGit(Format(strCommitDate, [FormatDateTime(strDateFmt, dtCommitDateTime), strCleanComment]));
 End;
 
 (**
@@ -616,15 +732,27 @@ Procedure TfrmJEDIVCSToGit.FormCreate(Sender: TObject);
 
 Const
   strGITExe = 'GIT.exe';
+  strConnection =
+    'SERVER=SEASONSFALL0001\SQLEXPRESS2008'#13#10 +
+    'OSAuthent=Yes'#13#10 +
+    'ApplicationName=JEDIVCSToGit'#13#10 +
+    'Workstation=SEASONSFALL0001'#13#10 +
+    'Database=JEDIVCS24'#13#10 +
+    'DriverID=MSSQL'#13#10 +
+    'User_Name=sysdba';
 
 Begin
   FFilenames := TStringList.Create;
   FFileNames.Duplicates := dupIgnore;
-  LoadSettings;
   FItemCount := 0;
   FItem := 0;
   FGitPI.boolEnabled := True;
   FGitPI.strEXE := strGITExe;
+  FDConnection.Params.Text := strConnection;
+  FDConnection.Connected := True;
+  RevisionsFDQuery.Active := True;
+  BlobsFDQuery.Active := True;
+  LoadSettings;
 End;
 
 (**
@@ -674,6 +802,9 @@ End;
 **)
 Procedure TfrmJEDIVCSToGit.LoadSettings;
 
+Const
+  iDefaultWidth = 100;
+
 Var
   iniFile: TMemIniFile;
   iColumn : Integer;
@@ -687,12 +818,10 @@ Begin
     Width := iniFile.ReadInteger(strSetupIniSection, strWidthKey, Width);
     For iColumn := 0 To DBGrid.Columns.Count - 1 Do
       DBGrid.Columns[iColumn].Width := iniFile.ReadInteger(strRevsColWidthsIniSection,
-        DBGrid.Columns[iColumn].FieldName,
-        DBGrid.Columns[iColumn].Width);
+        DBGrid.Columns[iColumn].FieldName, iDefaultWidth);
     For iColumn := 0 To BlobsGrid.Columns.Count - 1 Do
       BlobsGrid.Columns[iColumn].Width := iniFile.ReadInteger(strBlobColumnWidthsIniSection,
-        BlobsGrid.Columns[iColumn].FieldName,
-        BlobsGrid.Columns[iColumn].Width);
+        BlobsGrid.Columns[iColumn].FieldName, iDefaultWidth);
     edtProjectNamePattern.Text := iniFile.ReadString(strSetupIniSection, strProjectNamePatternKey, '');
     edtGitRepoPath.Text := iniFile.ReadString(strSetupIniSection, strRepoPathKey, '');
     mmoGitOutput.Height := iniFile.ReadInteger(strSetupIniSection, strOutputHeightKey,

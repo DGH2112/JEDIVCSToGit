@@ -26,7 +26,7 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
       840
       41)
     object lblGitRepoPath: TLabel
-      Left = 319
+      Left = 311
       Top = 9
       Width = 108
       Height = 16
@@ -34,15 +34,15 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
     end
     object lblProjectNamePattern: TLabel
       Left = 8
-      Top = 12
+      Top = 9
       Width = 122
       Height = 16
       Caption = 'Project Name Pattern'
     end
     object edtGitRepoPath: TEdit
-      Left = 433
-      Top = 9
-      Width = 297
+      Left = 425
+      Top = 6
+      Width = 305
       Height = 24
       Anchors = [akLeft, akTop, akRight]
       TabOrder = 0
@@ -50,16 +50,16 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
     object btnGetRevisions: TButton
       Left = 736
       Top = 6
-      Width = 96
+      Width = 97
       Height = 25
-      Anchors = [akRight, akBottom]
+      Anchors = [akTop, akRight]
       Caption = 'Get Revisions'
       TabOrder = 1
       OnClick = btnGetRevisionsClick
     end
     object edtProjectNamePattern: TEdit
-      Left = 144
-      Top = 8
+      Left = 136
+      Top = 6
       Width = 169
       Height = 24
       TabOrder = 2
@@ -85,10 +85,6 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
     Align = alClient
     Caption = 'pnlMain'
     TabOrder = 2
-    ExplicitLeft = 336
-    ExplicitTop = 264
-    ExplicitWidth = 185
-    ExplicitHeight = 41
     object Splitter: TSplitter
       Left = 1
       Top = 367
@@ -109,15 +105,22 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
       BevelOuter = bvNone
       Caption = 'pnlMasterDetail'
       TabOrder = 0
-      ExplicitLeft = 0
-      ExplicitTop = 41
-      ExplicitWidth = 840
-      ExplicitHeight = 368
+      object DBGridSplitter: TSplitter
+        Left = 0
+        Top = 249
+        Width = 838
+        Height = 3
+        Cursor = crVSplit
+        Align = alBottom
+        ResizeStyle = rsUpdate
+        ExplicitTop = 0
+        ExplicitWidth = 252
+      end
       object DBGrid: TDBGrid
         Left = 0
         Top = 0
         Width = 838
-        Height = 252
+        Height = 249
         Align = alClient
         DataSource = RevisionsDataSource
         TabOrder = 0
@@ -156,9 +159,6 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
       ParentFont = False
       ScrollBars = ssBoth
       TabOrder = 1
-      ExplicitLeft = 0
-      ExplicitTop = 412
-      ExplicitWidth = 840
     end
   end
   object FDConnection: TFDConnection
@@ -172,10 +172,9 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
       'Database=JEDIVCS24'
       'DriverID=MSSQL'
       'User_Name=sysdba')
-    Connected = True
     LoginPrompt = False
-    Left = 48
-    Top = 88
+    Left = 80
+    Top = 104
   end
   object RevisionsDataSource: TDataSource
     DataSet = RevisionsFDQuery
@@ -183,7 +182,6 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
     Top = 96
   end
   object RevisionsFDQuery: TFDQuery
-    Active = True
     IndexFieldNames = 'ProjectID'
     MasterFields = 'ProjectID'
     Connection = FDConnection
@@ -213,7 +211,6 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
       end>
   end
   object BlobsFDQuery: TFDQuery
-    Active = True
     IndexFieldNames = 'revisionid'
     MasterSource = RevisionsDataSource
     MasterFields = 'revisionid'
