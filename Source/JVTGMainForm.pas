@@ -769,11 +769,11 @@ End;
 Procedure TfrmJEDIVCSToGit.FormDestroy(Sender: TObject);
 
 Const
-  strLog = '.log';
+  strLog = 'Git.log';
 
 Begin
   SaveSettings;
-  mmoGitOutput.Lines.SaveToFile(ChangeFileExt(ParamStr(0), strLog));
+  mmoGitOutput.Lines.SaveToFile(FGitRepoPath + strLog);
   FFileNames.Free;
 End;
 
