@@ -151,8 +151,10 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
     Height = 19
     Panels = <
       item
+        Style = psOwnerDraw
         Width = 50
       end>
+    OnDrawPanel = StatusBarDrawPanel
   end
   object pnlMainqq: TPanel
     Left = 0
