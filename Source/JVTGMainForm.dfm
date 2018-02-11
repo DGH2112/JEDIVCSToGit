@@ -172,6 +172,7 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
       'Database=JEDIVCS24'
       'DriverID=MSSQL'
       'User_Name=sysdba')
+    Connected = True
     LoginPrompt = False
     Left = 80
     Top = 104
@@ -182,12 +183,9 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
     Top = 96
   end
   object RevisionsFDQuery: TFDQuery
-    IndexFieldNames = 'ProjectID'
-    MasterFields = 'ProjectID'
     Connection = FDConnection
     SQL.Strings = (
-      'SELECT'
-      '  P.PROJECTID, P.NAME AS [Project  name],'
+      'SELECT DISTINCT'
       '  M.MODULEID, M.NAME AS [Module Name], M.PATH,'
       '  R.REVISIONID, R.VERSION, R.REVISION, R.COMMENT_I,'
       '  VL.TSTAMP, VL.DESCRIPTION'

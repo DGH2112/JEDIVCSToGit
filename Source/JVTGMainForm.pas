@@ -153,6 +153,7 @@ Const
   strRepoPathKey = 'RepoPath';
   (** An ini key for the output height **)
   strOutputHeightKey = 'OutputHeight';
+  strBlobGridHeightKey = 'BlobGridHeight';
 
 Function DGHFindOnPath(var strEXEName : String; Const strDirs : String) : Boolean; Forward;
 
@@ -515,6 +516,7 @@ Const
   strGitInit = 'init';
   strTmpSource = 'Source\';
   dblMSInSec = 1000.0;
+  strGitStatus = 'status';
 
 Var
   strZipFileName: String;
@@ -559,11 +561,13 @@ Begin
                       Begin
                         CodeSite.Send(Format(strFileNeedsRenaming, [strOldFileName, Z.FileName[iFile]]));
                         ExecuteGit(Format(strMoveParams, [strSubDir, strOldFileName, strSubDir, Z.FileName[iFile]]));
+                        ExecuteGit(strGitStatus);
                       End;
                   FFileNames.Values[strRepoFilename] := Z.FileName[iFile];
                   Z.Extract(Z.FileName[iFile], FGitRepoPath + strSubDir);
                   ProcessMsgevent(Format(strExtracting, [FGitRepoPath + strSubDir + Z.FileName[iFile]]), boolAbort);
                   ExecuteGit(Format(strAddParams, [strSubDir, Z.FileName[iFile]]));
+                  ExecuteGit(strGitStatus);
                 End;
               Z.Close;
             Finally
@@ -573,6 +577,7 @@ Begin
           End;
         CommitToGit(RevisionsDataSource.DataSet.FieldByName(strComment_i).AsString,
           RevisionsDataSource.DataSet.FieldByName(strTSTAMP).AsDateTime);
+        ExecuteGit(strGitStatus);
         Inc(FItem);
         StatusBar.Panels[0].Text := Format(strRecOfRecs, [FItem, FItemCount,
           Int(GetTickCount64 - iStartTime) / dblMSInSec]);
@@ -826,6 +831,7 @@ Begin
     edtGitRepoPath.Text := iniFile.ReadString(strSetupIniSection, strRepoPathKey, '');
     mmoGitOutput.Height := iniFile.ReadInteger(strSetupIniSection, strOutputHeightKey,
       mmoGitOutput.Height);
+    BlobsGrid.Height := iniFile.ReadInteger(strSetupIniSection, strBlobGridHeightKey, BlobsGrid.Height);
   Finally
     iniFile.Free;
   End;
@@ -901,6 +907,7 @@ Begin
     iniFile.WriteString(strSetupIniSection, strProjectNamePatternKey, edtProjectNamePattern.Text);
     iniFile.WriteString(strSetupIniSection, strRepoPathKey, edtGitRepoPath.Text);
     iniFile.WriteInteger(strSetupIniSection, strOutputHeightKey, mmoGitOutput.Height);
+    iniFile.WriteInteger(strSetupIniSection, strBlobGridHeightKey, BlobsGrid.Height);
     iniFile.UpdateFile;
   Finally
     iniFile.Free;
