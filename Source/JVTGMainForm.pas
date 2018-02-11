@@ -84,6 +84,7 @@ Type
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure edtProjectNamePatternExit(Sender: TObject);
+    procedure StatusBarDrawPanel(StatusBar: TStatusBar; Panel: TStatusPanel; const Rect: TRect);
   Strict Private
     FFileNames   : TstringList;
     FLastMessage : String;
@@ -92,6 +93,7 @@ Type
     FGitPI       : TProcessInfo;
     FGitRepoPath : String;
     FStartTime   : UInt64;
+    FPercentage  : Double;
   Strict Protected
     Procedure LoadSettings;
     Procedure SaveSettings;
@@ -101,6 +103,8 @@ Type
     Procedure ExecuteGit(Const strCmdParams : String);
     Procedure CheckGitRepoPath;
     Procedure CheckThereIsNoExistingGitRepo;
+    Procedure UpdateStatus;
+    Function  CalcTime(Const iTime : UInt64): String;
   Public
   End;
 
@@ -161,6 +165,8 @@ Const
   strOutputHeightKey = 'OutputHeight';
   (** An ini key for the height of the Blob Grid. **)
   strBlobGridHeightKey = 'BlobGridHeight';
+  (** A constant double for the percentable multiplier. **)
+  dblPercentageMultiplier = 100.0;
 
 Function DGHFindOnPath(var strEXEName : String; Const strDirs : String) : Boolean; Forward;
 
@@ -590,14 +596,10 @@ Const
   **)
   Procedure ProcessRevisions;
 
-  ResourceString
-    strRecOfRecs = '%d of %d, Elapsed time: %1.1n seconds...';
-
   Const
     strBlogZip = 'Blog.zip';
     strComment_i = 'comment_i';
     strTSTAMP = 'TSTAMP';
-    dblMSInSec = 1000.0;
    
   Var
     strZipFileName: String;
@@ -611,8 +613,7 @@ Const
           RevisionsDataSource.DataSet.FieldByName(strTSTAMP).AsDateTime);
         ExecuteGit(strGitStatus);
         Inc(FItem);
-        StatusBar.Panels[0].Text := Format(strRecOfRecs, [FItem, FItemCount,
-          Int(GetTickCount64 - FStartTime) / dblMSInSec]);
+        UpdateStatus;
         RevisionsDataSource.DataSet.Next;
       End;
   End;
@@ -636,6 +637,37 @@ Begin
     DBGrid.ReadOnly := False;
     BlobsGrid.ReadOnly := False;;
   End;
+End;
+
+(**
+
+  This method calculates the time (in milliseconds) as minutes and seconds.
+
+  @precon  None.
+  @postcon Returns the number of milliseconds as minutes and seconds as a string.
+
+  @param   iTime as an UInt64 as a constant
+  @return  a String
+
+**)
+Function TfrmJEDIVCSToGit.CalcTime(Const iTime : UInt64): String;
+
+ResourceString
+  strMinsSecs = '%d mins %d secs';
+
+Const
+  dblMSInSec = 1000.0;
+  iSecsInMin = 60;
+
+Var
+  iSeconds: Int64;
+  iMinutes: Int64;
+
+Begin
+  iSeconds := Trunc(Int(iTime) / dblMSInSec);
+  iMinutes := iSeconds Div iSecsInMin;
+  iSeconds := iSeconds Mod iSecsInMin;
+  Result := Format(strMinsSecs, [iMinutes, iSeconds]);
 End;
 
 (**
@@ -963,6 +995,71 @@ Begin
   Finally
     iniFile.Free;
   End;
+End;
+
+(**
+
+  This is an on draw panel event handler for the statusbar.
+
+  @precon  None.
+  @postcon Draws the main panel (0) with a progress bar.
+
+  @nocheck MissingConstInParam
+  
+  @param   StatusBar as a TStatusBar
+  @param   Panel     as a TStatusPanel
+  @param   Rect      as a TRect as a constant
+
+**)
+Procedure TfrmJEDIVCSToGit.StatusBarDrawPanel(StatusBar: TStatusBar; Panel: TStatusPanel;
+  Const Rect: TRect);
+
+Const
+  iPadding = 0;
+  iLightRed = $8080FF;
+  iLightGreen = $80FF80;
+
+Var
+  R : TRect;
+  strText: String;
+  
+Begin
+  R := Rect;
+  strText := Panel.Text;
+  StatusBar.Canvas.Brush.Color := iLightRed;
+  InflateRect(R, -iPadding, 0);
+  StatusBar.Canvas.FillRect(R);
+  StatusBar.Canvas.TextRect(R, strText, [tfLeft]);
+  StatusBar.Canvas.Brush.Color := iLightGreen;
+  R.Right := R.Left + Trunc(Int(R.Right - R.Left) * (FPercentage / dblPercentageMultiplier));
+  StatusBar.Canvas.FillRect(R);
+  StatusBar.Canvas.TextRect(R, strText, [tfLeft]);
+End;
+
+(**
+
+  This method updates the statusbar status and pregress position.
+
+  @precon  None.
+  @postcon The statusbar status and position is updated.
+
+**)
+Procedure TfrmJEDIVCSToGit.UpdateStatus;
+
+ResourceString
+  strRecOfRecs = ' %d of %d (%1.1n%%), Elapsed: %s, Remaining: %s...';
+
+Var
+  iRemaining: UINt64;
+
+Begin
+  FPercentage := Int(FItem) / Int(FItemCount) * dblPercentageMultiplier;
+  If FPercentage > 0 Then
+    iRemaining := Trunc(Int(GetTickCount64 - FStartTime) * dblPercentageMultiplier / FPercentage)
+  Else
+    iRemaining := 0;
+  StatusBar.Panels[0].Text := Format(strRecOfRecs, [FItem, FItemCount, FPercentage,
+    CalcTime(GetTickCount64 - FStartTime), CalcTime(iRemaining)]);
 End;
 
 End.
