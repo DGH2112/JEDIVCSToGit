@@ -1072,21 +1072,21 @@ ResourceString
   strRecOfRecs = ' %d of %d (%1.1n%%), Elapsed: %s, Remaining: %s, Total: %s...';
 
 Var
-  iRemaining: UINt64;
+  iTotal: UINt64;
 
 Begin
   FPercentage := Int(FItem) / Int(FItemCount) * dblPercentageMultiplier;
   If FPercentage > 0 Then
-    iRemaining := Trunc(Int(GetTickCount64 - FStartTime) * dblPercentageMultiplier / FPercentage)
+    iTotal := Trunc(Int(GetTickCount64 - FStartTime) * dblPercentageMultiplier / FPercentage)
   Else
-    iRemaining := 0;
+    iTotal := 0;
   StatusBar.Panels[0].Text := Format(strRecOfRecs, [
     FItem,
     FItemCount,
     FPercentage,
     CalcTime(GetTickCount64 - FStartTime),
-    CalcTime(iRemaining),
-    CalcTime(GetTickCount64 - FStartTime + iRemaining)
+    CalcTime(iTotal - (GetTickCount64 - FStartTime)),
+    CalcTime(iTotal)
   ]);
 End;
 

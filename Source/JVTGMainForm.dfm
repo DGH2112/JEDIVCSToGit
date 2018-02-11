@@ -110,24 +110,20 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
       object lblNewGitRepoPath: TLabel
         Left = 1
         Top = 1
-        Width = 125
-        Height = 23
+        Width = 106
+        Height = 16
         Align = alClient
         Caption = 'New Git Repo Path'
         Layout = tlCenter
-        ExplicitWidth = 106
-        ExplicitHeight = 16
       end
       object lblOldGitRepoPath: TLabel
         Left = 209
         Top = 1
-        Width = 125
-        Height = 23
+        Width = 100
+        Height = 16
         Align = alClient
         Caption = 'Old Git Repo Path'
         Layout = tlCenter
-        ExplicitWidth = 100
-        ExplicitHeight = 16
       end
       object edtOldGitRepoPath: TEdit
         Left = 334
