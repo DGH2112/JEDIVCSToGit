@@ -85,12 +85,13 @@ Type
     procedure FormDestroy(Sender: TObject);
     procedure edtProjectNamePatternExit(Sender: TObject);
   Strict Private
-    FFileNames : TstringList;
-    FLastMessage: String;
-    FItemCount: Integer;
-    FItem: Integer;
-    FGitPI : TProcessInfo;
-    FGitRepoPath: String;
+    FFileNames   : TstringList;
+    FLastMessage : String;
+    FItemCount   : Integer;
+    FItem        : Integer;
+    FGitPI       : TProcessInfo;
+    FGitRepoPath : String;
+    FStartTime   : UInt64;
   Strict Protected
     Procedure LoadSettings;
     Procedure SaveSettings;
@@ -505,34 +506,119 @@ End;
 **)
 Procedure TfrmJEDIVCSToGit.btnGetRevisionsClick(Sender: TObject);
 
-ResourceString
-  strFileNeedsRenaming = 'The file "%s" needs renaming to "%s"!';
-  strExtracting = 'Extracting: %s';
-
 Const
-  strBlogZip = 'Blog.zip';
-  strFileData = 'FileData';
-  strModuleName = 'Module Name';
-  strExtension = 'Extension';
-  strComment_i = 'comment_i';
-  strTSTAMP = 'TSTAMP';
-  strRecOfRecs = '%d of %d, Elapsed time: %1.1n seconds...';
-  strMoveParams = 'mv -v %s%s %s%s';
-  strAddParams = 'add -v %s%s';
-  strGitInit = 'init';
-  strTmpSource = 'Source\';
-  dblMSInSec = 1000.0;
   strGitStatus = 'status';
 
-Var
-  strZipFileName: String;
-  Z: TZipFile;
-  iFile: Integer;
-  strOldFileName: String;
-  strRepoFileName: String;
-  strSubDir: String;
-  iStartTime: UInt64;
-  boolAbort: Boolean;
+  (**
+
+    This method processes the blobs associated with a revision and adds them to the git repo.
+
+    @precon  strZipFileName must be a valid ZIP file.
+    @postcon The revisiob blobs are added to the Git Repo.
+
+    @param   strZipFileName as a String as a constant
+
+  **)
+  Procedure ProcessBlobs(Const strZipFileName : String);
+
+  ResourceString
+    strFileNeedsRenaming = 'The file "%s" needs renaming to "%s"!';
+    strExtracting = 'Extracting: %s';
+  
+  Const
+    strFileData = 'FileData';
+    strTmpSource = 'Source\';
+    strModuleName = 'Module Name';
+    strExtension = 'Extension';
+    strMoveParams = 'mv -v %s%s %s%s';
+    strAddParams = 'add -v %s%s';
+  
+  Var
+    Z: TZipFile;
+    iFile: Integer;
+    strSubDir: String;
+    strOldFileName: String;
+    strRepoFileName: String;
+    boolAbort: Boolean;
+    
+  Begin
+    BlobsDataSource.DataSet.First;
+    While Not BlobsDataSource.DataSet.Eof Do
+      Begin
+       (BlobsDataSource.DataSet.FieldByName(strFileData) As TBlobField).SaveToFile(strZipFileName);
+        Z := TZipFile.Create;
+        Try
+          Z.Open(strZipFileName, zmRead);
+          For iFile := 0 To Z.FileCount - 1 Do
+            Begin
+              strSubDir := strTmpSource;
+              strRepoFileName :=
+                RevisionsDataSource.DataSet.FieldByName(strModuleName).AsString + '.' +
+                BlobsDataSource.DataSet.FieldByName(strExtension).AsString;
+              strOldFileName := FFileNames.Values[strRepoFileName];
+              If strOldFileName <> '' Then
+                If CompareText(strOldFileName, Z.FileName[iFile]) <> 0 Then
+                  Begin
+                    CodeSite.Send(Format(strFileNeedsRenaming, [strOldFileName, Z.FileName[iFile]]));
+                    ExecuteGit(Format(strMoveParams, [strSubDir, strOldFileName, strSubDir,
+                      Z.FileName[iFile]]));
+                    ExecuteGit(strGitStatus);
+                  End;
+              FFileNames.Values[strRepoFilename] := Z.FileName[iFile];
+              Z.Extract(Z.FileName[iFile], FGitRepoPath + strSubDir);
+              ProcessMsgevent(Format(strExtracting, [FGitRepoPath + strSubDir + Z.FileName[iFile]]),
+                boolAbort);
+              ExecuteGit(Format(strAddParams, [strSubDir, Z.FileName[iFile]]));
+              ExecuteGit(strGitStatus);
+            End;
+          Z.Close;
+        Finally
+          Z.Free;
+        End;
+        BlobsDataSource.DataSet.Next;
+      End;
+  End;
+  
+  (**
+
+    This method iterates through the revision records processing the blobs assoviated with each revision
+    extracting the files, adding them and committing them.
+
+    @precon  None.
+    @postcon The revision records are processed.
+
+  **)
+  Procedure ProcessRevisions;
+
+  ResourceString
+    strRecOfRecs = '%d of %d, Elapsed time: %1.1n seconds...';
+
+  Const
+    strBlogZip = 'Blog.zip';
+    strComment_i = 'comment_i';
+    strTSTAMP = 'TSTAMP';
+    dblMSInSec = 1000.0;
+   
+  Var
+    strZipFileName: String;
+    
+  Begin
+    strZipFileName := FGitRepoPath + strBlogZip;
+    While Not RevisionsDataSource.DataSet.Eof Do
+      Begin
+        ProcessBlobs(strZipFileName);
+        CommitToGit(RevisionsDataSource.DataSet.FieldByName(strComment_i).AsString,
+          RevisionsDataSource.DataSet.FieldByName(strTSTAMP).AsDateTime);
+        ExecuteGit(strGitStatus);
+        Inc(FItem);
+        StatusBar.Panels[0].Text := Format(strRecOfRecs, [FItem, FItemCount,
+          Int(GetTickCount64 - FStartTime) / dblMSInSec]);
+        RevisionsDataSource.DataSet.Next;
+      End;
+  End;
+
+Const
+  strGitInit = 'init';
 
 Begin
   CheckGitRepoPath;
@@ -541,54 +627,11 @@ Begin
   DBGrid.ReadOnly := True;
   BlobsGrid.ReadOnly := True;
   Try
-    iStartTime := GetTickCount64;
+    FStartTime := GetTickCount64;
     RevisionsDataSource.DataSet.Last;
     FItemCount := RevisionsDataSource.DataSet.RecordCount;
     RevisionsDataSource.DataSet.First;
-    strZipFileName := FGitRepoPath + strBlogZip;
-    While Not RevisionsDataSource.DataSet.Eof Do
-      Begin
-        BlobsDataSource.DataSet.First;
-        While Not BlobsDataSource.DataSet.Eof Do
-          Begin
-           (BlobsDataSource.DataSet.FieldByName(strFileData) As TBlobField).SaveToFile(strZipFileName);
-            Z := TZipFile.Create;
-            Try
-              Z.Open(strZipFileName, zmRead);
-              For iFile := 0 To Z.FileCount - 1 Do
-                Begin
-                  strSubDir := strTmpSource;
-                  strRepoFileName :=
-                    RevisionsDataSource.DataSet.FieldByName(strModuleName).AsString + '.' +
-                    BlobsDataSource.DataSet.FieldByName(strExtension).AsString;
-                  strOldFileName := FFileNames.Values[strRepoFileName];
-                  If strOldFileName <> '' Then
-                    If CompareText(strOldFileName, Z.FileName[iFile]) <> 0 Then
-                      Begin
-                        CodeSite.Send(Format(strFileNeedsRenaming, [strOldFileName, Z.FileName[iFile]]));
-                        ExecuteGit(Format(strMoveParams, [strSubDir, strOldFileName, strSubDir, Z.FileName[iFile]]));
-                        ExecuteGit(strGitStatus);
-                      End;
-                  FFileNames.Values[strRepoFilename] := Z.FileName[iFile];
-                  Z.Extract(Z.FileName[iFile], FGitRepoPath + strSubDir);
-                  ProcessMsgevent(Format(strExtracting, [FGitRepoPath + strSubDir + Z.FileName[iFile]]), boolAbort);
-                  ExecuteGit(Format(strAddParams, [strSubDir, Z.FileName[iFile]]));
-                  ExecuteGit(strGitStatus);
-                End;
-              Z.Close;
-            Finally
-              Z.Free;
-            End;
-            BlobsDataSource.DataSet.Next;
-          End;
-        CommitToGit(RevisionsDataSource.DataSet.FieldByName(strComment_i).AsString,
-          RevisionsDataSource.DataSet.FieldByName(strTSTAMP).AsDateTime);
-        ExecuteGit(strGitStatus);
-        Inc(FItem);
-        StatusBar.Panels[0].Text := Format(strRecOfRecs, [FItem, FItemCount,
-          Int(GetTickCount64 - iStartTime) / dblMSInSec]);
-        RevisionsDataSource.DataSet.Next;
-      End;
+    ProcessRevisions;
   Finally
     DBGrid.ReadOnly := False;
     BlobsGrid.ReadOnly := False;;
