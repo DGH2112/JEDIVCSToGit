@@ -22,64 +22,46 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
     Height = 33
     Align = alTop
     TabOrder = 0
-    DesignSize = (
-      840
-      33)
-    object lblProjectNamePattern: TLabel
-      Left = 8
-      Top = 9
-      Width = 122
-      Height = 16
-      Caption = 'Project Name Pattern'
-    end
-    object btnGetRevisions: TButton
-      Left = 736
-      Top = 6
-      Width = 97
-      Height = 25
-      Anchors = [akTop, akRight]
-      Caption = 'Get Revisions'
-      TabOrder = 0
-      OnClick = btnGetRevisionsClick
-    end
-    object edtProjectNamePattern: TEdit
-      Left = 136
-      Top = 6
-      Width = 169
-      Height = 24
-      TabOrder = 1
-      Text = 'edtProjectNamePattern'
-      OnExit = edtProjectNamePatternExit
-    end
     object pnlGitRepos: TGridPanel
-      Left = 311
-      Top = 6
-      Width = 419
-      Height = 25
-      Anchors = [akLeft, akTop, akRight]
+      Left = 1
+      Top = 1
+      Width = 838
+      Height = 31
+      Align = alClient
       ColumnCollection = <
         item
           SizeStyle = ssAbsolute
-          Value = 125.000000000000000000
+          Value = 135.000000000000000000
         end
         item
-          Value = 50.000000000000000000
+          Value = 30.000000013333320000
         end
         item
           SizeStyle = ssAbsolute
-          Value = 125.000000000000000000
+          Value = 115.000000000000000000
         end
         item
-          Value = 50.000000000000000000
+          Value = 34.999999993333340000
+        end
+        item
+          SizeStyle = ssAbsolute
+          Value = 120.000000000000000000
+        end
+        item
+          Value = 34.999999993333340000
+        end
+        item
+          SizeStyle = ssAbsolute
+          Value = 110.000000000000000000
         end>
       ControlCollection = <
         item
-          Column = 1
+          Column = 5
           Control = edtNewGitRepoPath
           Row = 0
         end
         item
-          Column = 0
+          Column = 4
           Control = lblNewGitRepoPath
           Row = 0
         end
@@ -92,46 +74,124 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
           Column = 3
           Control = edtOldGitRepoPath
           Row = 0
+        end
+        item
+          Column = 6
+          Control = btnGetRevisions
+          Row = 0
+        end
+        item
+          Column = 0
+          Control = lblProjectNamePattern
+          Row = 0
+        end
+        item
+          Column = 1
+          Control = edtProjectNamePattern
+          Row = 0
         end>
       RowCollection = <
         item
           Value = 100.000000000000000000
         end>
-      TabOrder = 2
+      TabOrder = 0
+      ExplicitHeight = 28
+      DesignSize = (
+        838
+        31)
       object edtNewGitRepoPath: TEdit
-        Left = 126
-        Top = 1
-        Width = 83
+        AlignWithMargins = True
+        Left = 604
+        Top = 4
+        Width = 118
         Height = 23
         Align = alClient
         TabOrder = 0
+        ExplicitLeft = 126
+        ExplicitTop = 1
+        ExplicitWidth = 83
         ExplicitHeight = 24
       end
       object lblNewGitRepoPath: TLabel
-        Left = 1
-        Top = 1
-        Width = 106
-        Height = 16
+        AlignWithMargins = True
+        Left = 484
+        Top = 4
+        Width = 114
+        Height = 23
         Align = alClient
         Caption = 'New Git Repo Path'
         Layout = tlCenter
+        ExplicitLeft = 1
+        ExplicitTop = 1
+        ExplicitWidth = 106
+        ExplicitHeight = 16
       end
       object lblOldGitRepoPath: TLabel
-        Left = 209
-        Top = 1
-        Width = 100
-        Height = 16
+        AlignWithMargins = True
+        Left = 245
+        Top = 4
+        Width = 109
+        Height = 23
         Align = alClient
         Caption = 'Old Git Repo Path'
         Layout = tlCenter
+        ExplicitLeft = 209
+        ExplicitTop = 1
+        ExplicitWidth = 100
+        ExplicitHeight = 16
       end
       object edtOldGitRepoPath: TEdit
-        Left = 334
-        Top = 1
-        Width = 84
+        AlignWithMargins = True
+        Left = 360
+        Top = 4
+        Width = 118
         Height = 23
         Align = alClient
         TabOrder = 1
+        ExplicitLeft = 334
+        ExplicitTop = 1
+        ExplicitWidth = 84
+        ExplicitHeight = 24
+      end
+      object btnGetRevisions: TButton
+        Left = 731
+        Top = 3
+        Width = 97
+        Height = 25
+        Anchors = []
+        Caption = 'Get Revisions'
+        TabOrder = 2
+        OnClick = btnGetRevisionsClick
+        ExplicitLeft = 736
+        ExplicitTop = 6
+      end
+      object lblProjectNamePattern: TLabel
+        AlignWithMargins = True
+        Left = 4
+        Top = 4
+        Width = 129
+        Height = 23
+        Align = alClient
+        Caption = 'Project Name Pattern'
+        Layout = tlCenter
+        ExplicitLeft = 8
+        ExplicitTop = 9
+        ExplicitWidth = 122
+        ExplicitHeight = 16
+      end
+      object edtProjectNamePattern: TEdit
+        AlignWithMargins = True
+        Left = 139
+        Top = 4
+        Width = 100
+        Height = 23
+        Align = alClient
+        TabOrder = 3
+        Text = 'edtProjectNamePattern'
+        OnExit = edtProjectNamePatternExit
+        ExplicitLeft = 136
+        ExplicitTop = 6
+        ExplicitWidth = 169
         ExplicitHeight = 24
       end
     end
