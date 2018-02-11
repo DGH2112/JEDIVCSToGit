@@ -5,7 +5,7 @@
 
   @Author  David Hoyle
   @Version 1.0
-  @Date    10 Feb 2018
+  @Date    11 Feb 2018
   
 **)
 Unit JVTGMainForm;
@@ -66,8 +66,8 @@ Type
     mmoGitOutput: TMemo;
     Splitter: TSplitter;
     pnlTop: TPanel;
-    lblGitRepoPath: TLabel;
-    edtGitRepoPath: TEdit;
+    lblNewGitRepoPath: TLabel;
+    edtNewGitRepoPath: TEdit;
     StatusBar: TStatusBar;
     pnlMain: TPanel;
     BlobsGrid: TDBGrid;
@@ -77,6 +77,9 @@ Type
     edtProjectNamePattern: TEdit;
     pnlMainqq: TPanel;
     DBGridSplitter: TSplitter;
+    pnlGitRepos: TGridPanel;
+    lblOldGitRepoPath: TLabel;
+    edtOldGitRepoPath: TEdit;
     Procedure btnGetRevisionsClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
@@ -150,9 +153,12 @@ Const
   (** An ini key for the ProjectNamePattern for matching revisions. **)
   strProjectNamePatternKey = 'ProjectNamePattern';
   (** An ini key for the new repository path. **)
-  strRepoPathKey = 'RepoPath';
+  strNewRepoPathKey = 'NewRepoPath';
+  (** An ini key for the old repository path. **)
+  strOldRepoPathKey = 'OldRepoPath';
   (** An ini key for the output height **)
   strOutputHeightKey = 'OutputHeight';
+  (** An ini key for the height of the Blob Grid. **)
   strBlobGridHeightKey = 'BlobGridHeight';
 
 Function DGHFindOnPath(var strEXEName : String; Const strDirs : String) : Boolean; Forward;
@@ -603,9 +609,9 @@ ResourceString
   strGitRepositoryPathDoesNotExist = 'The Git Repository path "%s" does not exist!';
 
 Begin
-  If (Length(edtGitRepoPath.Text) = 0) Or (Not DirectoryExists(edtGitRepoPath.Text)) Then
-    Raise Exception.CreateFmt(strGitRepositoryPathDoesNotExist, [edtGitRepoPath.Text]);
-  FGitRepoPath := edtGitRepoPath.Text;
+  If (Length(edtNewGitRepoPath.Text) = 0) Or (Not DirectoryExists(edtNewGitRepoPath.Text)) Then
+    Raise Exception.CreateFmt(strGitRepositoryPathDoesNotExist, [edtNewGitRepoPath.Text]);
+  FGitRepoPath := edtNewGitRepoPath.Text;
   If FGitRepoPath[Length(FGitRepoPath)] <> '\' Then
     FGitRepoPath := FGitRepoPath + '\';
 End;
@@ -828,7 +834,8 @@ Begin
       BlobsGrid.Columns[iColumn].Width := iniFile.ReadInteger(strBlobColumnWidthsIniSection,
         BlobsGrid.Columns[iColumn].FieldName, iDefaultWidth);
     edtProjectNamePattern.Text := iniFile.ReadString(strSetupIniSection, strProjectNamePatternKey, '');
-    edtGitRepoPath.Text := iniFile.ReadString(strSetupIniSection, strRepoPathKey, '');
+    edtNewGitRepoPath.Text := iniFile.ReadString(strSetupIniSection, strNewRepoPathKey, '');
+    edtOldGitRepoPath.Text := iniFile.ReadString(strSetupIniSection, strOldRepoPathKey, '');
     mmoGitOutput.Height := iniFile.ReadInteger(strSetupIniSection, strOutputHeightKey,
       mmoGitOutput.Height);
     BlobsGrid.Height := iniFile.ReadInteger(strSetupIniSection, strBlobGridHeightKey, BlobsGrid.Height);
@@ -905,7 +912,8 @@ Begin
       iniFile.WriteInteger(strBlobColumnWidthsIniSection, BlobsGrid.Columns[iColumn].FieldName,
         BlobsGrid.Columns[iColumn].Width);
     iniFile.WriteString(strSetupIniSection, strProjectNamePatternKey, edtProjectNamePattern.Text);
-    iniFile.WriteString(strSetupIniSection, strRepoPathKey, edtGitRepoPath.Text);
+    iniFile.WriteString(strSetupIniSection, strNewRepoPathKey, edtNewGitRepoPath.Text);
+    iniFile.WriteString(strSetupIniSection, strOldRepoPathKey, edtOldGitRepoPath.Text);
     iniFile.WriteInteger(strSetupIniSection, strOutputHeightKey, mmoGitOutput.Height);
     iniFile.WriteInteger(strSetupIniSection, strBlobGridHeightKey, BlobsGrid.Height);
     iniFile.UpdateFile;

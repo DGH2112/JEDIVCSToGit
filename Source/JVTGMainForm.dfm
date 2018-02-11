@@ -19,33 +19,18 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
     Left = 0
     Top = 0
     Width = 840
-    Height = 41
+    Height = 33
     Align = alTop
     TabOrder = 0
     DesignSize = (
       840
-      41)
-    object lblGitRepoPath: TLabel
-      Left = 311
-      Top = 9
-      Width = 108
-      Height = 16
-      Caption = 'Git Repository Path'
-    end
+      33)
     object lblProjectNamePattern: TLabel
       Left = 8
       Top = 9
       Width = 122
       Height = 16
       Caption = 'Project Name Pattern'
-    end
-    object edtGitRepoPath: TEdit
-      Left = 425
-      Top = 6
-      Width = 305
-      Height = 24
-      Anchors = [akLeft, akTop, akRight]
-      TabOrder = 0
     end
     object btnGetRevisions: TButton
       Left = 736
@@ -54,7 +39,7 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
       Height = 25
       Anchors = [akTop, akRight]
       Caption = 'Get Revisions'
-      TabOrder = 1
+      TabOrder = 0
       OnClick = btnGetRevisionsClick
     end
     object edtProjectNamePattern: TEdit
@@ -62,9 +47,101 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
       Top = 6
       Width = 169
       Height = 24
-      TabOrder = 2
+      TabOrder = 1
       Text = 'edtProjectNamePattern'
       OnExit = edtProjectNamePatternExit
+    end
+    object pnlGitRepos: TGridPanel
+      Left = 311
+      Top = 6
+      Width = 419
+      Height = 25
+      Anchors = [akLeft, akTop, akRight]
+      ColumnCollection = <
+        item
+          SizeStyle = ssAbsolute
+          Value = 125.000000000000000000
+        end
+        item
+          Value = 50.000000000000000000
+        end
+        item
+          SizeStyle = ssAbsolute
+          Value = 125.000000000000000000
+        end
+        item
+          Value = 50.000000000000000000
+        end>
+      ControlCollection = <
+        item
+          Column = 1
+          Control = edtNewGitRepoPath
+          Row = 0
+        end
+        item
+          Column = 0
+          Control = lblNewGitRepoPath
+          Row = 0
+        end
+        item
+          Column = 2
+          Control = lblOldGitRepoPath
+          Row = 0
+        end
+        item
+          Column = 3
+          Control = edtOldGitRepoPath
+          Row = 0
+        end>
+      RowCollection = <
+        item
+          Value = 100.000000000000000000
+        end>
+      TabOrder = 2
+      object edtNewGitRepoPath: TEdit
+        Left = 126
+        Top = 1
+        Width = 83
+        Height = 23
+        Align = alClient
+        TabOrder = 0
+        ExplicitLeft = 425
+        ExplicitTop = 6
+        ExplicitWidth = 305
+        ExplicitHeight = 24
+      end
+      object lblNewGitRepoPath: TLabel
+        Left = 1
+        Top = 1
+        Width = 125
+        Height = 23
+        Align = alClient
+        Caption = 'New Git Repo Path'
+        Layout = tlCenter
+        ExplicitWidth = 106
+        ExplicitHeight = 16
+      end
+      object lblOldGitRepoPath: TLabel
+        Left = 209
+        Top = 1
+        Width = 125
+        Height = 23
+        Align = alClient
+        Caption = 'Old Git Repo Path'
+        Layout = tlCenter
+        ExplicitWidth = 100
+        ExplicitHeight = 16
+      end
+      object edtOldGitRepoPath: TEdit
+        Left = 334
+        Top = 1
+        Width = 84
+        Height = 23
+        Align = alClient
+        TabOrder = 1
+        ExplicitLeft = 298
+        ExplicitWidth = 121
+      end
     end
   end
   object StatusBar: TStatusBar
@@ -79,15 +156,17 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
   end
   object pnlMainqq: TPanel
     Left = 0
-    Top = 41
+    Top = 33
     Width = 840
-    Height = 479
+    Height = 487
     Align = alClient
     Caption = 'pnlMain'
     TabOrder = 2
+    ExplicitTop = 41
+    ExplicitHeight = 479
     object Splitter: TSplitter
       Left = 1
-      Top = 367
+      Top = 375
       Width = 838
       Height = 3
       Cursor = crVSplit
@@ -100,14 +179,15 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
       Left = 1
       Top = 1
       Width = 838
-      Height = 366
+      Height = 374
       Align = alClient
       BevelOuter = bvNone
       Caption = 'pnlMasterDetail'
       TabOrder = 0
+      ExplicitHeight = 366
       object DBGridSplitter: TSplitter
         Left = 0
-        Top = 249
+        Top = 257
         Width = 838
         Height = 3
         Cursor = crVSplit
@@ -120,7 +200,7 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
         Left = 0
         Top = 0
         Width = 838
-        Height = 249
+        Height = 257
         Align = alClient
         DataSource = RevisionsDataSource
         TabOrder = 0
@@ -132,7 +212,7 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
       end
       object BlobsGrid: TDBGrid
         Left = 0
-        Top = 252
+        Top = 260
         Width = 838
         Height = 114
         Align = alBottom
@@ -147,7 +227,7 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
     end
     object mmoGitOutput: TMemo
       Left = 1
-      Top = 370
+      Top = 378
       Width = 838
       Height = 108
       Align = alBottom
@@ -159,6 +239,7 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
       ParentFont = False
       ScrollBars = ssBoth
       TabOrder = 1
+      ExplicitTop = 370
     end
   end
   object FDConnection: TFDConnection
