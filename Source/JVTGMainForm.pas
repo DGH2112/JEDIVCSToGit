@@ -102,7 +102,7 @@ Type
     Procedure IdleEvent;
     Procedure ExecuteGit(Const strCmdParams : String);
     Procedure CheckGitRepoPath;
-    Procedure CheckThereIsNoExistingGitRepo;
+    Procedure CheckThereIsAnExistingGitRepo;
     Procedure UpdateStatus;
     Function  CalcTime(Const iTime : UInt64): String;
   Public
@@ -619,7 +619,7 @@ Const
   Procedure ProcessRevisions;
 
   Const
-    strBlogZip = 'Blog.zip';
+    strBlobZip = 'Blob.zip';
     strComment_i = 'comment_i';
     strTSTAMP = 'TSTAMP';
    
@@ -627,7 +627,7 @@ Const
     strZipFileName: String;
     
   Begin
-    strZipFileName := FGitRepoPath + strBlogZip;
+    strZipFileName := FGitRepoPath + strBlobZip;
     While Not RevisionsDataSource.DataSet.Eof Do
       Begin
         ProcessBlobs(strZipFileName);
@@ -640,13 +640,9 @@ Const
       End;
   End;
 
-Const
-  strGitInit = 'init';
-
 Begin
   CheckGitRepoPath;
-  CheckThereIsNoExistingGitRepo;
-  ExecuteGit(strGitInit);
+  CheckThereIsAnExistingGitRepo;
   DBGrid.ReadOnly := True;
   BlobsGrid.ReadOnly := True;
   Try
@@ -721,17 +717,17 @@ End;
   @postcon Raises an exception if there is already a repository.
 
 **)
-Procedure TfrmJEDIVCSToGit.CheckThereIsNoExistingGitRepo;
+Procedure TfrmJEDIVCSToGit.CheckThereIsAnExistingGitRepo;
 
 ResourceString
-  strGitRepositoryAlreadyExists = 'A git repository already exists in "%s"!';
+  strGitRepositoryDoesNotExists = 'A GIT repository does NOT exists in "%s"!';
 
 Const
   strGitDir = '.git';
 
 Begin
-  If DirectoryExists(FGitRepoPath + strGitDir) Then
-    Raise Exception.CreateFmt(strGitRepositoryAlreadyExists, [FGitRepoPath]);
+  If Not DirectoryExists(FGitRepoPath + strGitDir) Then
+    Raise Exception.CreateFmt(strGitRepositoryDoesNotExists, [FGitRepoPath]);
 End;
 
 (**
