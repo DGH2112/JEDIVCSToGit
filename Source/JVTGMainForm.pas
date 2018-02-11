@@ -527,30 +527,58 @@ Const
   **)
   Procedure ProcessBlobs(Const strZipFileName : String);
 
-    Procedure CheckFileNamesForRename;
+    (**
 
-    Begin
+      This method checks the file to be extracted and whether it needs to rename an existing file.
+
+      @precon  None.
+      @postcon Renames the file if its name has changed and updates the output filename.
+
+      @param   strSubDir        as a String as a constant
+      @param   strFileToExtract as a String as a constant
+
+    **)
+    Procedure CheckFileNamesForRename(Const strSubDir, strFileToExtract : String);
+
+    ResourceString
+      strFileNeedsRenaming = 'The file "%s" needs renaming to "%s"!';
     
+    Const
+      strModuleName = 'Module Name';
+      strExtension = 'Extension';
+      strMoveParams = 'mv -v %s%s %s%s';
+    
+    Var
+      strOldFileName: String;
+      strRepoFileName: String;
+    
+    Begin
+      strRepoFileName :=
+        RevisionsDataSource.DataSet.FieldByName(strModuleName).AsString + '.' +
+        BlobsDataSource.DataSet.FieldByName(strExtension).AsString;
+      strOldFileName := FFileNames.Values[strRepoFileName];
+      If strOldFileName <> '' Then
+        If CompareText(strOldFileName, strFileToExtract) <> 0 Then
+          Begin
+            CodeSite.Send(Format(strFileNeedsRenaming, [strOldFileName, strFileToExtract]));
+            ExecuteGit(Format(strMoveParams, [strSubDir, strOldFileName, strSubDir, strFileToExtract]));
+            ExecuteGit(strGitStatus);
+          End;
+      FFileNames.Values[strRepoFilename] := strFileToExtract;
     End;
   
   ResourceString
-    strFileNeedsRenaming = 'The file "%s" needs renaming to "%s"!';
     strExtracting = 'Extracting: %s';
   
   Const
     strFileData = 'FileData';
     strTmpSource = 'Source\';
-    strModuleName = 'Module Name';
-    strExtension = 'Extension';
-    strMoveParams = 'mv -v %s%s %s%s';
     strAddParams = 'add -v %s%s';
   
   Var
     Z: TZipFile;
     iFile: Integer;
     strSubDir: String;
-    strOldFileName: String;
-    strRepoFileName: String;
     boolAbort: Boolean;
     
   Begin
@@ -564,20 +592,7 @@ Const
           For iFile := 0 To Z.FileCount - 1 Do
             Begin
               strSubDir := strTmpSource;
-              CheckFileNamesForRename;
-              strRepoFileName :=
-                RevisionsDataSource.DataSet.FieldByName(strModuleName).AsString + '.' +
-                BlobsDataSource.DataSet.FieldByName(strExtension).AsString;
-              strOldFileName := FFileNames.Values[strRepoFileName];
-              If strOldFileName <> '' Then
-                If CompareText(strOldFileName, Z.FileName[iFile]) <> 0 Then
-                  Begin
-                    CodeSite.Send(Format(strFileNeedsRenaming, [strOldFileName, Z.FileName[iFile]]));
-                    ExecuteGit(Format(strMoveParams, [strSubDir, strOldFileName, strSubDir,
-                      Z.FileName[iFile]]));
-                    ExecuteGit(strGitStatus);
-                  End;
-              FFileNames.Values[strRepoFilename] := Z.FileName[iFile];
+              CheckFileNamesForRename(strSubDir, Z.FileName[iFile]);
               Z.Extract(Z.FileName[iFile], FGitRepoPath + strSubDir);
               ProcessMsgevent(Format(strExtracting, [FGitRepoPath + strSubDir + Z.FileName[iFile]]),
                 boolAbort);

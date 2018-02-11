@@ -105,28 +105,29 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
         Height = 23
         Align = alClient
         TabOrder = 0
-        ExplicitLeft = 425
-        ExplicitTop = 6
-        ExplicitWidth = 305
         ExplicitHeight = 24
       end
       object lblNewGitRepoPath: TLabel
         Left = 1
         Top = 1
-        Width = 106
-        Height = 16
+        Width = 125
+        Height = 23
         Align = alClient
         Caption = 'New Git Repo Path'
         Layout = tlCenter
+        ExplicitWidth = 106
+        ExplicitHeight = 16
       end
       object lblOldGitRepoPath: TLabel
         Left = 209
         Top = 1
-        Width = 100
-        Height = 16
+        Width = 125
+        Height = 23
         Align = alClient
         Caption = 'Old Git Repo Path'
         Layout = tlCenter
+        ExplicitWidth = 100
+        ExplicitHeight = 16
       end
       object edtOldGitRepoPath: TEdit
         Left = 334
@@ -135,8 +136,7 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
         Height = 23
         Align = alClient
         TabOrder = 1
-        ExplicitLeft = 298
-        ExplicitWidth = 121
+        ExplicitHeight = 24
       end
     end
   end
@@ -160,8 +160,6 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
     Align = alClient
     Caption = 'pnlMain'
     TabOrder = 2
-    ExplicitTop = 41
-    ExplicitHeight = 479
     object Splitter: TSplitter
       Left = 1
       Top = 375
@@ -182,7 +180,6 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
       BevelOuter = bvNone
       Caption = 'pnlMasterDetail'
       TabOrder = 0
-      ExplicitHeight = 366
       object DBGridSplitter: TSplitter
         Left = 0
         Top = 257
@@ -237,7 +234,6 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
       ParentFont = False
       ScrollBars = ssBoth
       TabOrder = 1
-      ExplicitTop = 370
     end
   end
   object FDConnection: TFDConnection
