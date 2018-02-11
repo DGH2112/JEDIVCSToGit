@@ -527,6 +527,12 @@ Const
   **)
   Procedure ProcessBlobs(Const strZipFileName : String);
 
+    Procedure CheckFileNamesForRename;
+
+    Begin
+    
+    End;
+  
   ResourceString
     strFileNeedsRenaming = 'The file "%s" needs renaming to "%s"!';
     strExtracting = 'Extracting: %s';
@@ -558,6 +564,7 @@ Const
           For iFile := 0 To Z.FileCount - 1 Do
             Begin
               strSubDir := strTmpSource;
+              CheckFileNamesForRename;
               strRepoFileName :=
                 RevisionsDataSource.DataSet.FieldByName(strModuleName).AsString + '.' +
                 BlobsDataSource.DataSet.FieldByName(strExtension).AsString;
@@ -1047,7 +1054,7 @@ End;
 Procedure TfrmJEDIVCSToGit.UpdateStatus;
 
 ResourceString
-  strRecOfRecs = ' %d of %d (%1.1n%%), Elapsed: %s, Remaining: %s...';
+  strRecOfRecs = ' %d of %d (%1.1n%%), Elapsed: %s, Remaining: %s, Total: %s...';
 
 Var
   iRemaining: UINt64;
@@ -1058,8 +1065,14 @@ Begin
     iRemaining := Trunc(Int(GetTickCount64 - FStartTime) * dblPercentageMultiplier / FPercentage)
   Else
     iRemaining := 0;
-  StatusBar.Panels[0].Text := Format(strRecOfRecs, [FItem, FItemCount, FPercentage,
-    CalcTime(GetTickCount64 - FStartTime), CalcTime(iRemaining)]);
+  StatusBar.Panels[0].Text := Format(strRecOfRecs, [
+    FItem,
+    FItemCount,
+    FPercentage,
+    CalcTime(GetTickCount64 - FStartTime),
+    CalcTime(iRemaining),
+    CalcTime(GetTickCount64 - FStartTime + iRemaining)
+  ]);
 End;
 
 End.
