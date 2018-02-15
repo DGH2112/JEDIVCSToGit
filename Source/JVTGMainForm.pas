@@ -5,7 +5,7 @@
 
   @Author  David Hoyle
   @Version 1.0
-  @Date    11 Feb 2018
+  @Date    15 Feb 2018
   
 **)
 Unit JVTGMainForm;
@@ -86,14 +86,16 @@ Type
     procedure edtProjectNamePatternExit(Sender: TObject);
     procedure StatusBarDrawPanel(StatusBar: TStatusBar; Panel: TStatusPanel; const Rect: TRect);
   Strict Private
-    FFileNames   : TstringList;
-    FLastMessage : String;
-    FItemCount   : Integer;
-    FItem        : Integer;
-    FGitPI       : TProcessInfo;
-    FGitRepoPath : String;
-    FStartTime   : UInt64;
-    FPercentage  : Double;
+    FFileNames           : TStringList;
+    FLastMessage         : String;
+    FItemCount           : Integer;
+    FItem                : Integer;
+    FGitPI               : TProcessInfo;
+    FGitRepoPath         : String;
+    FStartTime           : UInt64;
+    FPercentage          : Double;
+    FRelativePaths       : TStringList;
+    FExistingGitRepoPath : String;
   Strict Protected
     Procedure LoadSettings;
     Procedure SaveSettings;
@@ -122,7 +124,7 @@ Uses
   {$ENDIF}
   System.IniFiles,
   System.Zip,
-  System.UITypes;
+  System.UITypes, JVTGRelativePathForm;
 
 Type
   (** A method signature for the DGHCreateProcess message event handler. **)
@@ -523,9 +525,10 @@ Const
     @postcon The revisiob blobs are added to the Git Repo.
 
     @param   strZipFileName as a String as a constant
+    @return  an Integer
 
   **)
-  Procedure ProcessBlobs(Const strZipFileName : String);
+  Function ProcessBlobs(Const strZipFileName : String) : Integer;
 
     (**
 
@@ -572,7 +575,6 @@ Const
   
   Const
     strFileData = 'FileData';
-    strTmpSource = 'Source\';
     strAddParams = 'add -v %s%s';
   
   Var
@@ -582,6 +584,7 @@ Const
     boolAbort: Boolean;
     
   Begin
+    Result := 0;
     BlobsDataSource.DataSet.First;
     While Not BlobsDataSource.DataSet.Eof Do
       Begin
@@ -590,15 +593,18 @@ Const
         Try
           Z.Open(strZipFileName, zmRead);
           For iFile := 0 To Z.FileCount - 1 Do
-            Begin
-              strSubDir := strTmpSource;
-              CheckFileNamesForRename(strSubDir, Z.FileName[iFile]);
-              Z.Extract(Z.FileName[iFile], FGitRepoPath + strSubDir);
-              ProcessMsgevent(Format(strExtracting, [FGitRepoPath + strSubDir + Z.FileName[iFile]]),
-                boolAbort);
-              ExecuteGit(Format(strAddParams, [strSubDir, Z.FileName[iFile]]));
-              ExecuteGit(strGitStatus);
-            End;
+            If TfrmExtractRelPath.Execute(FRelativePaths, FExistingGitRepoPath,
+              RevisionsDataSource.Dataset.FieldByName('path').AsString,
+              RevisionsDataSource.Dataset.FieldByName('Module Name').AsString, strSubDir) Then
+              Begin
+                CheckFileNamesForRename(strSubDir, Z.FileName[iFile]);
+                Z.Extract(Z.FileName[iFile], FGitRepoPath + strSubDir);
+                ProcessMsgevent(Format(strExtracting, [FGitRepoPath + strSubDir + Z.FileName[iFile]]),
+                  boolAbort);
+                ExecuteGit(Format(strAddParams, [strSubDir, Z.FileName[iFile]]));
+                Inc(Result);
+                ExecuteGit(strGitStatus);
+              End;
           Z.Close;
         Finally
           Z.Free;
@@ -707,6 +713,9 @@ Begin
   FGitRepoPath := edtNewGitRepoPath.Text;
   If FGitRepoPath[Length(FGitRepoPath)] <> '\' Then
     FGitRepoPath := FGitRepoPath + '\';
+  FExistingGitRepoPath := edtOldGitRepoPath.Text;
+  If FExistingGitRepoPath[Length(FExistingGitRepoPath)] <> '\' Then
+    FExistingGitRepoPath := FExistingGitRepoPath + '\';
 End;
 
 (**
@@ -780,14 +789,17 @@ Var
   aiColumnWidths : TArray<Integer>;
 
 Begin
-  SetLength(aiColumnWidths, DBGrid.Columns.Count);
-  For iColumn := 0 To DBGrid.Columns.Count - 1 Do
-    aiColumnWidths[iColumn] := DBGrid.Columns[iColumn].Width;
-  M := RevisionsFDQuery.MacroByName(strProjectNamePatternMacro);
-  M.Value := edtProjectNamePattern.Text;
-  RevisionsFDQuery.Active := True;
-  For iColumn := 0 To DBGrid.Columns.Count - 1 Do
-    DBGrid.Columns[iColumn].Width := aiColumnWidths[iColumn];
+  If FDConnection.Connected Then
+    Begin
+      SetLength(aiColumnWidths, DBGrid.Columns.Count);
+      For iColumn := 0 To DBGrid.Columns.Count - 1 Do
+        aiColumnWidths[iColumn] := DBGrid.Columns[iColumn].Width;
+      M := RevisionsFDQuery.MacroByName(strProjectNamePatternMacro);
+      M.Value := edtProjectNamePattern.Text;
+      RevisionsFDQuery.Active := True;
+      For iColumn := 0 To DBGrid.Columns.Count - 1 Do
+        DBGrid.Columns[iColumn].Width := aiColumnWidths[iColumn];
+    End;
 End;
 
 (**
@@ -834,16 +846,13 @@ End;
 **)
 Procedure TfrmJEDIVCSToGit.FormCreate(Sender: TObject);
 
+ResourceString
+  strPleaseSpecifyFireDACINIFileAsFirstParameter = 'Please specify a FireDAC INI file as the first ' + 
+    'parameter!';
+  strCouldNotLoadINIFile = 'Could not load the INI file "%s"';
+
 Const
   strGITExe = 'GIT.exe';
-  strConnection =
-    'SERVER=SEASONSFALL0001\SQLEXPRESS2008'#13#10 +
-    'OSAuthent=Yes'#13#10 +
-    'ApplicationName=JEDIVCSToGit'#13#10 +
-    'Workstation=SEASONSFALL0001'#13#10 +
-    'Database=JEDIVCS24'#13#10 +
-    'DriverID=MSSQL'#13#10 +
-    'User_Name=sysdba';
 
 Begin
   FFilenames := TStringList.Create;
@@ -852,10 +861,19 @@ Begin
   FItem := 0;
   FGitPI.boolEnabled := True;
   FGitPI.strEXE := strGITExe;
-  FDConnection.Params.Text := strConnection;
-  FDConnection.Connected := True;
-  RevisionsFDQuery.Active := True;
-  BlobsFDQuery.Active := True;
+  If (ParamCount > 0) And FileExists(ParamStr(1)) Then
+    Begin
+      FDConnection.Params.LoadFromFile(ParamStr(1));
+      FDConnection.Connected := True;
+      RevisionsFDQuery.Active := True;
+      BlobsFDQuery.Active := True;
+    End Else
+      If ParamCount = 0 Then
+        ShowMessage(strPleaseSpecifyFireDACINIFileAsFirstParameter)
+      Else
+        ShowMessage(Format(strCouldNotLoadINIFile, [ParamStr(1)]));
+  FRelativePaths := TStringList.Create;
+  FRelativePaths.Duplicates := dupIgnore;
   LoadSettings;
 End;
 
@@ -878,6 +896,7 @@ Const
 Begin
   SaveSettings;
   mmoGitOutput.Lines.SaveToFile(FGitRepoPath + strLog);
+  FRelativePaths.Free;
   FFileNames.Free;
 End;
 
