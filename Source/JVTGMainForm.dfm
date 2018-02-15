@@ -121,8 +121,6 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
         Align = alClient
         Caption = 'New Git Repo Path'
         Layout = tlCenter
-        ExplicitLeft = 1
-        ExplicitTop = 1
         ExplicitWidth = 106
         ExplicitHeight = 16
       end
@@ -135,8 +133,6 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
         Align = alClient
         Caption = 'Old Git Repo Path'
         Layout = tlCenter
-        ExplicitLeft = 209
-        ExplicitTop = 1
         ExplicitWidth = 100
         ExplicitHeight = 16
       end
@@ -174,8 +170,6 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
         Align = alClient
         Caption = 'Project Name Pattern'
         Layout = tlCenter
-        ExplicitLeft = 8
-        ExplicitTop = 9
         ExplicitWidth = 122
         ExplicitHeight = 16
       end
