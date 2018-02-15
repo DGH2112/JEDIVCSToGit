@@ -95,7 +95,6 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
           Value = 100.000000000000000000
         end>
       TabOrder = 0
-      ExplicitHeight = 28
       DesignSize = (
         838
         31)
@@ -107,9 +106,6 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
         Height = 23
         Align = alClient
         TabOrder = 0
-        ExplicitLeft = 126
-        ExplicitTop = 1
-        ExplicitWidth = 83
         ExplicitHeight = 24
       end
       object lblNewGitRepoPath: TLabel
@@ -144,9 +140,6 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
         Height = 23
         Align = alClient
         TabOrder = 1
-        ExplicitLeft = 334
-        ExplicitTop = 1
-        ExplicitWidth = 84
         ExplicitHeight = 24
       end
       object btnGetRevisions: TButton
@@ -158,8 +151,6 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
         Caption = 'Get Revisions'
         TabOrder = 2
         OnClick = btnGetRevisionsClick
-        ExplicitLeft = 736
-        ExplicitTop = 6
       end
       object lblProjectNamePattern: TLabel
         AlignWithMargins = True
@@ -183,9 +174,6 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
         TabOrder = 3
         Text = 'edtProjectNamePattern'
         OnExit = edtProjectNamePatternExit
-        ExplicitLeft = 136
-        ExplicitTop = 6
-        ExplicitWidth = 169
         ExplicitHeight = 24
       end
     end
@@ -297,7 +285,6 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
       'Database=JEDIVCS24'
       'DriverID=MSSQL'
       'User_Name=sysdba')
-    Connected = True
     LoginPrompt = False
     Left = 80
     Top = 104
