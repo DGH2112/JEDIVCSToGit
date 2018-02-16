@@ -1,7 +1,7 @@
 object frmExtractRelPath: TfrmExtractRelPath
   Left = 0
   Top = 0
-  Caption = 'frmExtractRelPath'
+  Caption = 'Relative Path'
   ClientHeight = 164
   ClientWidth = 608
   Color = clBtnFace
@@ -11,6 +11,7 @@ object frmExtractRelPath: TfrmExtractRelPath
   Font.Name = 'Tahoma'
   Font.Style = []
   OldCreateOrder = False
+  Position = poMainFormCenter
   DesignSize = (
     608
     164)
@@ -54,7 +55,6 @@ object frmExtractRelPath: TfrmExtractRelPath
     ReadOnly = True
     TabOrder = 0
     Text = 'edtExistingGitRepoPath'
-    ExplicitWidth = 557
   end
   object edtModulePath: TEdit
     Left = 160
@@ -66,7 +66,6 @@ object frmExtractRelPath: TfrmExtractRelPath
     ReadOnly = True
     TabOrder = 1
     Text = 'edtExistingGitRepoPath'
-    ExplicitWidth = 557
   end
   object edtModuleName: TEdit
     Left = 160
@@ -78,17 +77,6 @@ object frmExtractRelPath: TfrmExtractRelPath
     ReadOnly = True
     TabOrder = 2
     Text = 'edtExistingGitRepoPath'
-    ExplicitWidth = 557
-  end
-  object edtRelPath: TEdit
-    Left = 160
-    Top = 98
-    Width = 440
-    Height = 24
-    Anchors = [akLeft, akTop, akRight]
-    TabOrder = 3
-    Text = 'edtExistingGitRepoPath'
-    ExplicitWidth = 557
   end
   object btnAbort: TBitBtn
     Left = 525
@@ -99,8 +87,6 @@ object frmExtractRelPath: TfrmExtractRelPath
     Kind = bkAbort
     NumGlyphs = 2
     TabOrder = 4
-    ExplicitLeft = 529
-    ExplicitTop = 148
   end
   object btnCancel: TBitBtn
     Left = 444
@@ -111,8 +97,6 @@ object frmExtractRelPath: TfrmExtractRelPath
     Kind = bkCancel
     NumGlyphs = 2
     TabOrder = 5
-    ExplicitLeft = 448
-    ExplicitTop = 148
   end
   object btnOK: TBitBtn
     Left = 363
@@ -123,7 +107,14 @@ object frmExtractRelPath: TfrmExtractRelPath
     Kind = bkOK
     NumGlyphs = 2
     TabOrder = 6
-    ExplicitLeft = 367
-    ExplicitTop = 148
+  end
+  object edtRelPath: TComboBox
+    Left = 160
+    Top = 98
+    Width = 440
+    Height = 24
+    Anchors = [akLeft, akTop, akRight]
+    TabOrder = 3
+    Text = 'edtExistingGitRepoPath'
   end
 end

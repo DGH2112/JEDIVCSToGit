@@ -91,11 +91,11 @@ Type
     FItemCount           : Integer;
     FItem                : Integer;
     FGitPI               : TProcessInfo;
-    FGitRepoPath         : String;
+    FNewGitRepoPath      : String;
     FStartTime           : UInt64;
     FPercentage          : Double;
     FRelativePaths       : TStringList;
-    FExistingGitRepoPath : String;
+    FOldGitRepoPath      : String;
   Strict Protected
     Procedure LoadSettings;
     Procedure SaveSettings;
@@ -124,7 +124,7 @@ Uses
   {$ENDIF}
   System.IniFiles,
   System.Zip,
-  System.UITypes, JVTGRelativePathForm;
+  System.UITypes, JVTGRelativePathForm, JVTGTypes;
 
 Type
   (** A method signature for the DGHCreateProcess message event handler. **)
@@ -576,12 +576,15 @@ Const
   Const
     strFileData = 'FileData';
     strAddParams = 'add -v %s%s';
-  
+    strPath = 'path';
+    strModuleName = 'Module Name';
+
   Var
     Z: TZipFile;
     iFile: Integer;
     strSubDir: String;
     boolAbort: Boolean;
+    RepoData : TJVTGRepoData;
     
   Begin
     Result := 0;
@@ -593,18 +596,22 @@ Const
         Try
           Z.Open(strZipFileName, zmRead);
           For iFile := 0 To Z.FileCount - 1 Do
-            If TfrmExtractRelPath.Execute(FRelativePaths, FExistingGitRepoPath,
-              RevisionsDataSource.Dataset.FieldByName('path').AsString,
-              RevisionsDataSource.Dataset.FieldByName('Module Name').AsString, strSubDir) Then
-              Begin
-                CheckFileNamesForRename(strSubDir, Z.FileName[iFile]);
-                Z.Extract(Z.FileName[iFile], FGitRepoPath + strSubDir);
-                ProcessMsgevent(Format(strExtracting, [FGitRepoPath + strSubDir + Z.FileName[iFile]]),
-                  boolAbort);
-                ExecuteGit(Format(strAddParams, [strSubDir, Z.FileName[iFile]]));
-                Inc(Result);
-                ExecuteGit(strGitStatus);
-              End;
+            Begin
+              RepoData.FOLDGitRepoPath := FOldGitRepoPath;
+              RepoData.FNEWGitRepoPath := FNewGitRepoPath;
+              RepoData.FModulePath := RevisionsDataSource.Dataset.FieldByName(strPath).AsString;
+              RepoData.FModuleName := RevisionsDataSource.Dataset.FieldByName(strModuleName).AsString;
+              If TfrmExtractRelPath.Execute(FRelativePaths, RepoData, strSubDir) Then
+                Begin
+                  CheckFileNamesForRename(strSubDir, Z.FileName[iFile]);
+                  Z.Extract(Z.FileName[iFile], FNewGitRepoPath + strSubDir);
+                  ProcessMsgevent(Format(strExtracting, [FNewGitRepoPath + strSubDir + Z.FileName[iFile]]),
+                    boolAbort);
+                  ExecuteGit(Format(strAddParams, [strSubDir, Z.FileName[iFile]]));
+                  Inc(Result);
+                  ExecuteGit(strGitStatus);
+                End;
+            End;
           Z.Close;
         Finally
           Z.Free;
@@ -633,7 +640,7 @@ Const
     strZipFileName: String;
     
   Begin
-    strZipFileName := FGitRepoPath + strBlobZip;
+    strZipFileName := FNewGitRepoPath + strBlobZip;
     While Not RevisionsDataSource.DataSet.Eof Do
       Begin
         ProcessBlobs(strZipFileName);
@@ -710,12 +717,12 @@ ResourceString
 Begin
   If (Length(edtNewGitRepoPath.Text) = 0) Or (Not DirectoryExists(edtNewGitRepoPath.Text)) Then
     Raise Exception.CreateFmt(strGitRepositoryPathDoesNotExist, [edtNewGitRepoPath.Text]);
-  FGitRepoPath := edtNewGitRepoPath.Text;
-  If FGitRepoPath[Length(FGitRepoPath)] <> '\' Then
-    FGitRepoPath := FGitRepoPath + '\';
-  FExistingGitRepoPath := edtOldGitRepoPath.Text;
-  If FExistingGitRepoPath[Length(FExistingGitRepoPath)] <> '\' Then
-    FExistingGitRepoPath := FExistingGitRepoPath + '\';
+  FNewGitRepoPath := edtNewGitRepoPath.Text;
+  If FNewGitRepoPath[Length(FNewGitRepoPath)] <> '\' Then
+    FNewGitRepoPath := FNewGitRepoPath + '\';
+  FOldGitRepoPath := edtOldGitRepoPath.Text;
+  If FOldGitRepoPath[Length(FOldGitRepoPath)] <> '\' Then
+    FOldGitRepoPath := FOldGitRepoPath + '\';
 End;
 
 (**
@@ -735,8 +742,8 @@ Const
   strGitDir = '.git';
 
 Begin
-  If Not DirectoryExists(FGitRepoPath + strGitDir) Then
-    Raise Exception.CreateFmt(strGitRepositoryDoesNotExists, [FGitRepoPath]);
+  If Not DirectoryExists(FNewGitRepoPath + strGitDir) Then
+    Raise Exception.CreateFmt(strGitRepositoryDoesNotExists, [FNewGitRepoPath]);
 End;
 
 (**
@@ -822,7 +829,7 @@ Var
   iResult: Integer;
   
 Begin
-  FGitPI.strDir := FGitRepoPath;
+  FGitPI.strDir := FNewGitRepoPath;
   FGitPI.strParams := strCmdParams;
   ProcessMsgevent(Format('%s%s %s', [FGitPI.strDir, ExtractFileName(FGitPI.strEXE), FGitPI.strParams]), boolAbort);
   FLastMessage := '';
@@ -895,7 +902,7 @@ Const
 
 Begin
   SaveSettings;
-  mmoGitOutput.Lines.SaveToFile(FGitRepoPath + strLog);
+  mmoGitOutput.Lines.SaveToFile(FNewGitRepoPath + strLog);
   FRelativePaths.Free;
   FFileNames.Free;
 End;

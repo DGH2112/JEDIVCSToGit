@@ -11,6 +11,7 @@ uses
 begin
   Application.Initialize;
   Application.MainFormOnTaskbar := True;
+  Application.Title := 'JEDI VCS to GIT Migration Tool';
   Application.CreateForm(TfrmJEDIVCSToGit, frmJEDIVCSToGit);
   Application.Run;
 end.
