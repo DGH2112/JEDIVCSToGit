@@ -26,6 +26,7 @@ Uses
   JVTGTypes;
 
 Type
+  (** A class to represent a form for prompting the user to provide a relative path for a module. **)
   TfrmExtractRelPath = Class(TForm)
     lblExistingGitRepoPath: TLabel;
     edtExistingGitRepoPath: TEdit;
@@ -52,6 +53,16 @@ Implementation
 
 {$R *.dfm}
 
+(**
+
+  This method ensures that the given path has a trailing backslash.
+
+  @precon  None.
+  @postcon The give path is ensured to have a trailing backslash.
+
+  @param   strPath as a String as a reference
+
+**)
 Class Procedure TfrmExtractRelPath.AddTrailingSlash(Var strPath: String);
 
 Begin
@@ -59,22 +70,53 @@ Begin
     strPath := strPath + '\';
 End;
 
+(**
+
+  This method checks whether the given path need creating and if so prompts the user for the relative
+  path and then creates the path else raises an exception.
+
+  @precon  None.
+  @postcon Either the path is created or an exception is raised.
+
+  @param   boolResult        as a Boolean as a constant
+  @param   strNewGitRepoPath as a String as a constant
+  @param   strRelPath        as a String as a reference
+  @return  a Boolean
+
+**)
 Class Function TfrmExtractRelPath.CheckPathExists(Const boolResult : Boolean;
   Const strNewGitRepoPath : String; Var strRelPath : String) : Boolean;
+
+ResourceString
+  strCreateDirectory = 'Create Directory';
+  strCouldNotCreateFolder = 'Could not create the folder "%s"!';
 
 Begin
   Result := boolResult;
   If Not DirectoryExists(strNewGitRepoPath + strRelPath) Then
-    If InputQuery(Application.Title, 'Create Directory', strRelPath) Then
+    If InputQuery(Application.Title, strCreateDirectory, strRelPath) Then
       Begin
         AddTrailingSlash(strRelPath);
         If Not ForceDirectories(strNewGitRepoPath + strRelPath) Then
-          Raise Exception.Create(Format('Could not create the folder "%s"!',
+          Raise Exception.Create(Format(strCouldNotCreateFolder,
             [strNewGitRepoPath + strRelPath]));
       End Else
         Result := False;
 End;
 
+(**
+
+  This method is the main method for invoking the dialogue.
+
+  @precon  slPaths must be a valid instance.
+  @postcon Checks to see if the relative path is known. If not the dialogue is shown to the user.
+
+  @param   slPaths    as a TStringList as a constant
+  @param   RepoData   as a TJVTGRepoData as a constant
+  @param   strRelPath as a String as a reference
+  @return  a Boolean
+
+**)
 Class Function TfrmExtractRelPath.Execute(Const slPaths : TStringList; Const RepoData : TJVTGRepoData;
   Var strRelPath : String) : Boolean;
 
@@ -117,7 +159,6 @@ Begin
                     slPaths.Values[RepoData.FModuleName] := strRelPath;
                     Result := True;
                   End;
-                mrCancel: ;
                 mrAbort: Abort;
               End;  
             Finally

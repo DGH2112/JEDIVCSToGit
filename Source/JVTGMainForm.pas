@@ -362,7 +362,7 @@ Const
   
   Const
     strFileData = 'FileData';
-    strAddParams = 'add -v %s%s';
+    strAddParams = 'add -v %s';
     strPath = 'path';
     strModuleName = 'Module Name';
 
@@ -372,6 +372,7 @@ Const
     strSubDir: String;
     boolAbort: Boolean;
     RepoData : TJVTGRepoData;
+    strActualFileCase: String;
     
   Begin
     Result := 0;
@@ -394,7 +395,9 @@ Const
                   Z.Extract(Z.FileName[iFile], FNewGitRepoPath + strSubDir);
                   ProcessMsgevent(Format(strExtracting, [FNewGitRepoPath + strSubDir + Z.FileName[iFile]]),
                     boolAbort);
-                  ExecuteGit(Format(strAddParams, [strSubDir, Z.FileName[iFile]]));
+                  strActualFileCase := strSubDir + Z.FileName[iFile];
+                  //: @bug Need to get the actual path + filename case so git add will stage the file
+                  ExecuteGit(Format(strAddParams, [strActualFileCase]));
                   Inc(Result);
                   ExecuteGit(strGitStatus);
                 End;

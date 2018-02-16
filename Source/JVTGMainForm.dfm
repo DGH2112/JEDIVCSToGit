@@ -106,7 +106,6 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
         Height = 23
         Align = alClient
         TabOrder = 0
-        ExplicitHeight = 24
       end
       object lblNewGitRepoPath: TLabel
         AlignWithMargins = True
@@ -117,8 +116,6 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
         Align = alClient
         Caption = 'New Git Repo Path'
         Layout = tlCenter
-        ExplicitWidth = 106
-        ExplicitHeight = 16
       end
       object lblOldGitRepoPath: TLabel
         AlignWithMargins = True
@@ -129,8 +126,6 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
         Align = alClient
         Caption = 'Old Git Repo Path'
         Layout = tlCenter
-        ExplicitWidth = 100
-        ExplicitHeight = 16
       end
       object edtOldGitRepoPath: TEdit
         AlignWithMargins = True
@@ -140,7 +135,6 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
         Height = 23
         Align = alClient
         TabOrder = 1
-        ExplicitHeight = 24
       end
       object btnGetRevisions: TButton
         Left = 731
@@ -161,8 +155,6 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
         Align = alClient
         Caption = 'Project Name Pattern'
         Layout = tlCenter
-        ExplicitWidth = 122
-        ExplicitHeight = 16
       end
       object edtProjectNamePattern: TEdit
         AlignWithMargins = True
@@ -174,7 +166,6 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
         TabOrder = 3
         Text = 'edtProjectNamePattern'
         OnExit = edtProjectNamePatternExit
-        ExplicitHeight = 24
       end
     end
   end
@@ -206,8 +197,6 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
       Cursor = crVSplit
       Align = alBottom
       ResizeStyle = rsUpdate
-      ExplicitLeft = -6
-      ExplicitTop = 358
     end
     object pnlMain: TPanel
       Left = 1
@@ -226,8 +215,6 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
         Cursor = crVSplit
         Align = alBottom
         ResizeStyle = rsUpdate
-        ExplicitTop = 0
-        ExplicitWidth = 252
       end
       object DBGrid: TDBGrid
         Left = 0
