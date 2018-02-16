@@ -5,7 +5,7 @@
 
   @Author  David Hoyle
   @Version 1.0
-  @Date    15 Feb 2018
+  @Date    16 Feb 2018
   
 **)
 Unit JVTGMainForm;
@@ -48,14 +48,6 @@ Uses
   Vcl.ExtCtrls, Vcl.ComCtrls;
 
 Type
-  (** A record to describe the information required by DGHCreateProcess. **)
-  TProcessInfo = Record
-    boolEnabled : Boolean;
-    strEXE    : String;
-    strParams : String;
-    strDir    : String;
-    strTitle  : String;
-  End;
   (** A form to hold data sets from the JED VCS database containing the revisions and blobs. **)
   TfrmJEDIVCSToGit = Class(TForm)
     FDConnection: TFDConnection;
@@ -63,7 +55,6 @@ Type
     RevisionsDataSource: TDataSource;
     RevisionsFDQuery: TFDQuery;
     btnGetRevisions: TButton;
-    mmoGitOutput: TMemo;
     Splitter: TSplitter;
     pnlTop: TPanel;
     lblNewGitRepoPath: TLabel;
@@ -80,11 +71,31 @@ Type
     pnlGitRepos: TGridPanel;
     lblOldGitRepoPath: TLabel;
     edtOldGitRepoPath: TEdit;
+    lbxGitOutput: TListBox;
     Procedure btnGetRevisionsClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure edtProjectNamePatternExit(Sender: TObject);
     procedure StatusBarDrawPanel(StatusBar: TStatusBar; Panel: TStatusPanel; const Rect: TRect);
+    procedure lbxGitOutputDrawItem(Control: TWinControl; Index: Integer; Rect: TRect;
+      State: TOwnerDrawState);
+  Strict Private
+    Type
+      (** A record to describe the information required by DGHCreateProcess. @nohints **)
+      TProcessInfo = Record
+        boolEnabled : Boolean;
+        strEXE    : String;
+        strParams : String;
+        strDir    : String;
+        strTitle  : String;
+      End;
+    (** An enumerate to define the types of the messages. @nohints **)
+    TMsgType = (mtInformation, mtTitle);
+    (** A method signature for the DGHCreateProcess message event handler. @nohints **)
+    TProcessMsgHandler = Procedure(Const strMsg : String; var boolAbort : Boolean;
+      Const MsgType : TMsgType = mtInformation) Of Object;
+    (** A method signature for the DGHCreateProcess idle event handler. @nohints **)
+    TIdleHandler = Procedure Of Object;
   Strict Private
     FFileNames           : TStringList;
     FLastMessage         : String;
@@ -100,13 +111,16 @@ Type
     Procedure LoadSettings;
     Procedure SaveSettings;
     Procedure CommitToGit(Const strComment: String; Const dtCommitDateTime: TDateTime);
-    Procedure ProcessMsgevent(Const strMsg : String; Var boolAbort : Boolean);
+    Procedure ProcessMsgevent(Const strMsg: String; Var boolAbort: Boolean;
+      Const MsgType : TMsgType = mtInformation);
     Procedure IdleEvent;
     Procedure ExecuteGit(Const strCmdParams : String);
     Procedure CheckGitRepoPath;
     Procedure CheckThereIsAnExistingGitRepo;
     Procedure UpdateStatus;
     Function  CalcTime(Const iTime : UInt64): String;
+    Function  DGHCreateProcess(Var Process : TProcessInfo; Const ProcessMsgHandler : TProcessMsgHandler;
+      Const IdleHandler : TIdleHandler) : Integer;
   Public
   End;
 
@@ -125,12 +139,6 @@ Uses
   System.IniFiles,
   System.Zip,
   System.UITypes, JVTGRelativePathForm, JVTGTypes;
-
-Type
-  (** A method signature for the DGHCreateProcess message event handler. **)
-  TProcessMsgHandler = Procedure(Const strMsg : String; var boolAbort : Boolean) Of Object;
-  (** A method signature for the DGHCreateProcess idle event handler. **)
-  TIdleHandler = Procedure Of Object;
 
 ResourceString
   (** A resource string to say that the directory was not found. **)
@@ -171,227 +179,6 @@ Const
   dblPercentageMultiplier = 100.0;
 
 Function DGHFindOnPath(var strEXEName : String; Const strDirs : String) : Boolean; Forward;
-
-(**
-
-  This function creates a process with message handlers which must be implemented by the passed interface
-  in order for the calling process to get messages from the process console and handle idle and abort.
-
-  @precon  ProcMsgHndr must be a valid class implementing TDGHCreateProcessEvent.
-  @postcon Creates a process with message handlers which must be implemented by the passed interface in 
-           order for the calling process to get messages from the process console and handle idle and 
-           abort.
-
-  @param   Process           as a TProcessInfo as a reference
-  @param   ProcessMsgHandler as a TProcessMsgHandler as a constant
-  @param   IdleHandler       as a TIdleHandler as a constant
-  @return  an Integer
-
-**)
-Function  DGHCreateProcess(Var Process : TProcessInfo; Const ProcessMsgHandler : TProcessMsgHandler;
-  Const IdleHandler : TIdleHandler) : Integer;
-
-Type
-  EDGHCreateProcessException = Exception;
-
-Const
-  iPipeSize = 4096;
-
-Var
-  boolAbort: Boolean;
-
-  (**
-
-    This method checks that the process directory and executable exists.
-
-    @precon  None.
-    @postcon Raises exceptions if either the process directory or EXE are not valid.
-
-  **)
-  Procedure CheckProcess;
-
-  Begin
-    If Not DirectoryExists(Process.strDir) Then
-      Raise EDGHCreateProcessException.CreateFmt(strDirectoryNotFound, [Process.strDir]);
-    If Not FileExists(Process.strEXE) Then
-      Begin
-        If Not DGHFindOnPath(Process.strEXE, '') Then
-          Raise EDGHCreateProcessException.CreateFmt(strEXENotFound, [Process.strEXE]);
-      End;
-  End;
-
-  (**
-
-    This procedure configures the security attributes for the progress to be created.
-
-    @precon  None.
-    @postcon The passed security attributes are configured.
-
-    @param   SecurityAttrib as a TSecurityAttributes as a reference
-
-  **)
-  Procedure ConfigSecurityAttrib(Var SecurityAttrib : TSecurityAttributes);
-
-  Begin
-    FillChar(SecurityAttrib, SizeOf(SecurityAttrib), 0);
-    SecurityAttrib.nLength := SizeOf(SecurityAttrib);
-    SecurityAttrib.bInheritHandle := True;
-    SecurityAttrib.lpSecurityDescriptor := Nil;
-  End;
-
-  (**
-
-    This procedure configures the startup information for the new process to be created.
-
-    @precon  None.
-    @postcon The startup information is configured.
-
-    @param   StartupInfo as a TStartupInfo as a reference
-    @param   hWrite      as a THandle as a constant
-
-  **)
-  Procedure ConfigStartUp(Var StartupInfo : TStartupInfo; Const hWrite : THandle);
-
-  Begin
-    FillChar(StartupInfo, SizeOf(TStartupInfo), 0);
-    StartupInfo.cb := SizeOf(TStartupInfo);
-    StartupInfo.cb := SizeOf(StartupInfo);
-    StartupInfo.dwFlags := STARTF_USESHOWWINDOW or STARTF_USESTDHANDLES;
-    StartupInfo.wShowWindow := SW_HIDE;
-    StartupInfo.hStdOutput := hWrite;
-    StartupInfo.hStdError := hWrite;
-  End;
-
-  (**
-
-    This prcoedure is called periodically by the process handler in order to retreive console output from
-    the running process. Output everything from the console (pipe the anonymous pipe) but the last line 
-    as this may not be a complete line of information from the console (except if boolPurge is true).
-
-    @precon  slLines must be a valid instance of a TStringList class to accumulate the console output.
-    @postcon Outputs to the IDGHCreareProcessEvent interface output information from the console.
-
-    @param   slLines as a TStringList as a constant
-    @param   hRead   as a THandle as a constant
-    @param   Purge   as a Boolean as a constant
-
-  **)
-  Procedure ProcessOutput(Const slLines : TStringList; Const hRead : THandle;
-    Const Purge : Boolean = False);
-
-  Var
-    iTotalBytesInPipe : Cardinal;
-    iBytesRead : Cardinal;
-    strOutput : AnsiString;
-
-  Begin
-    If Assigned(Idlehandler) Then
-      IdleHandler;
-    If boolAbort Then
-      Begin
-        If Assigned(ProcessMsgHandler) Then
-          ProcessMsgHandler(strUserAbort, boolAbort);
-        Exit;
-      End;
-    Win32Check(PeekNamedPipe(hRead, Nil, 0, Nil, @iTotalBytesInPipe, Nil));
-    If iTotalBytesInPipe > 0 Then
-      Begin
-        SetLength(strOutput, iTotalBytesInPipe);
-        ReadFile(hRead, strOutput[1], iTotalBytesInPipe, iBytesRead, Nil);
-        SetLength(strOutput, iBytesRead);
-        slLines.Append(StringReplace(UTF8ToString(strOutput), #10, #13#10, [rfReplaceAll]));
-      End;
-    // Use a string list to output each line except the last as it may not
-    // be complete yet.
-    If Assigned(ProcessMsgHandler) Then
-      While slLines.Count > 1 - Integer(Purge) Do
-        Begin
-          ProcessMsgHandler(slLines[0], boolAbort);
-          slLines.Delete(0);
-        End;
-  End;
-
-  (**
-
-    This procedure runs the process collecting information from the console output and feeding it back 
-    into the output memo.
-
-    @precon  None.
-    @postcon The process is run and the output captured.
-
-    @param   SecurityAttrib as a TSecurityAttributes as a constant
-    @param   StartupInfo    as a TStartupInfo as a constant
-    @param   hRead          as a THandle as a constant
-
-  **)
-  Procedure RunProcess(Const SecurityAttrib : TSecurityAttributes; Const StartupInfo : TStartupInfo;
-    Const hRead : THandle);
-
-  Const
-    iWaitIntervalInMS = 50;
-
-  Var
-    ProcessInfo : TProcessInformation;
-    slLines : TStringList;
-    iExitCode : Cardinal;
-  
-  Begin
-    Win32Check(CreateProcess(PChar(Process.strEXE),
-      PChar('"' + Process.strEXE + '" ' + Process.strParams), @SecurityAttrib,
-      Nil, True, CREATE_NEW_CONSOLE, Nil, PChar(Process.strDir), StartupInfo, ProcessInfo));
-    Try
-      slLines := TStringList.Create;
-      Try
-        While WaitforSingleObject(ProcessInfo.hProcess, iWaitIntervalInMS) = WAIT_TIMEOUT Do
-          Begin
-            ProcessOutput(slLines, hRead);
-            If boolAbort Then
-              Begin
-                TerminateProcess(ProcessInfo.hProcess, 0);
-                Break;
-              End;
-          End;
-        ProcessOutput(slLines, hRead, True);
-      Finally
-        slLines.Free;
-      End;
-      If GetExitCodeProcess(ProcessInfo.hProcess, iExitCode) Then
-        Inc(Result, iExitCode)
-    Finally
-      Win32Check(CloseHandle(ProcessInfo.hThread));
-      Win32Check(CloseHandle(ProcessInfo.hProcess));
-    End;
-  End;
-
-Var
-  hRead, hWrite : THandle;
-  SecurityAttrib : TSecurityAttributes;
-  StartupInfo : TStartupInfo;
-
-Begin
-  Result := 0;
-  boolAbort := False;
-  ConfigSecurityAttrib(SecurityAttrib);
-  Win32Check(CreatePipe(hRead, hWrite, @SecurityAttrib, iPipeSize));
-  Try
-    If Process.boolEnabled Then
-      Try
-        CheckProcess;
-        ConfigStartUp(StartupInfo, hWrite);
-        RunProcess(SecurityAttrib, StartupInfo, hRead);
-      Except
-        On E : EDGHCreateProcessException Do
-          If Assigned(ProcessMsgHandler) Then
-            Begin
-              ProcessMsgHandler(E.Message, boolAbort);
-              Inc(Result);
-            End;
-      End;
-  Finally
-    Win32Check(CloseHandle(hWrite));
-    Win32Check(CloseHandle(hRead));
-  End;
-End;
 
 (**
 
@@ -775,6 +562,227 @@ End;
 
 (**
 
+  This function creates a process with message handlers which must be implemented by the passed interface
+  in order for the calling process to get messages from the process console and handle idle and abort.
+
+  @precon  ProcMsgHndr must be a valid class implementing TDGHCreateProcessEvent.
+  @postcon Creates a process with message handlers which must be implemented by the passed interface in 
+           order for the calling process to get messages from the process console and handle idle and 
+           abort.
+
+  @param   Process           as a TProcessInfo as a reference
+  @param   ProcessMsgHandler as a TProcessMsgHandler as a constant
+  @param   IdleHandler       as a TIdleHandler as a constant
+  @return  an Integer
+
+**)
+Function TfrmJEDIVCSToGit.DGHCreateProcess(Var Process : TProcessInfo;
+  Const ProcessMsgHandler : TProcessMsgHandler; Const IdleHandler : TIdleHandler) : Integer;
+
+Type
+  EDGHCreateProcessException = Exception;
+
+Const
+  iPipeSize = 4096;
+
+Var
+  boolAbort: Boolean;
+
+  (**
+
+    This method checks that the process directory and executable exists.
+
+    @precon  None.
+    @postcon Raises exceptions if either the process directory or EXE are not valid.
+
+  **)
+  Procedure CheckProcess;
+
+  Begin
+    If Not DirectoryExists(Process.strDir) Then
+      Raise EDGHCreateProcessException.CreateFmt(strDirectoryNotFound, [Process.strDir]);
+    If Not FileExists(Process.strEXE) Then
+      Begin
+        If Not DGHFindOnPath(Process.strEXE, '') Then
+          Raise EDGHCreateProcessException.CreateFmt(strEXENotFound, [Process.strEXE]);
+      End;
+  End;
+
+  (**
+
+    This procedure configures the security attributes for the progress to be created.
+
+    @precon  None.
+    @postcon The passed security attributes are configured.
+
+    @param   SecurityAttrib as a TSecurityAttributes as a reference
+
+  **)
+  Procedure ConfigSecurityAttrib(Var SecurityAttrib : TSecurityAttributes);
+
+  Begin
+    FillChar(SecurityAttrib, SizeOf(SecurityAttrib), 0);
+    SecurityAttrib.nLength := SizeOf(SecurityAttrib);
+    SecurityAttrib.bInheritHandle := True;
+    SecurityAttrib.lpSecurityDescriptor := Nil;
+  End;
+
+  (**
+
+    This procedure configures the startup information for the new process to be created.
+
+    @precon  None.
+    @postcon The startup information is configured.
+
+    @param   StartupInfo as a TStartupInfo as a reference
+    @param   hWrite      as a THandle as a constant
+
+  **)
+  Procedure ConfigStartUp(Var StartupInfo : TStartupInfo; Const hWrite : THandle);
+
+  Begin
+    FillChar(StartupInfo, SizeOf(TStartupInfo), 0);
+    StartupInfo.cb := SizeOf(TStartupInfo);
+    StartupInfo.cb := SizeOf(StartupInfo);
+    StartupInfo.dwFlags := STARTF_USESHOWWINDOW or STARTF_USESTDHANDLES;
+    StartupInfo.wShowWindow := SW_HIDE;
+    StartupInfo.hStdOutput := hWrite;
+    StartupInfo.hStdError := hWrite;
+  End;
+
+  (**
+
+    This prcoedure is called periodically by the process handler in order to retreive console output from
+    the running process. Output everything from the console (pipe the anonymous pipe) but the last line 
+    as this may not be a complete line of information from the console (except if boolPurge is true).
+
+    @precon  slLines must be a valid instance of a TStringList class to accumulate the console output.
+    @postcon Outputs to the IDGHCreareProcessEvent interface output information from the console.
+
+    @param   slLines as a TStringList as a constant
+    @param   hRead   as a THandle as a constant
+    @param   Purge   as a Boolean as a constant
+
+  **)
+  Procedure ProcessOutput(Const slLines : TStringList; Const hRead : THandle;
+    Const Purge : Boolean = False);
+
+  Var
+    iTotalBytesInPipe : Cardinal;
+    iBytesRead : Cardinal;
+    strOutput : AnsiString;
+
+  Begin
+    If Assigned(Idlehandler) Then
+      IdleHandler;
+    If boolAbort Then
+      Begin
+        If Assigned(ProcessMsgHandler) Then
+          ProcessMsgHandler(strUserAbort, boolAbort);
+        Exit;
+      End;
+    Win32Check(PeekNamedPipe(hRead, Nil, 0, Nil, @iTotalBytesInPipe, Nil));
+    If iTotalBytesInPipe > 0 Then
+      Begin
+        SetLength(strOutput, iTotalBytesInPipe);
+        ReadFile(hRead, strOutput[1], iTotalBytesInPipe, iBytesRead, Nil);
+        SetLength(strOutput, iBytesRead);
+        slLines.Append(StringReplace(UTF8ToString(strOutput), #10, #13#10, [rfReplaceAll]));
+      End;
+    // Use a string list to output each line except the last as it may not
+    // be complete yet.
+    If Assigned(ProcessMsgHandler) Then
+      While slLines.Count > 1 - Integer(Purge) Do
+        Begin
+          ProcessMsgHandler(slLines[0], boolAbort);
+          slLines.Delete(0);
+        End;
+  End;
+
+  (**
+
+    This procedure runs the process collecting information from the console output and feeding it back 
+    into the output memo.
+
+    @precon  None.
+    @postcon The process is run and the output captured.
+
+    @param   SecurityAttrib as a TSecurityAttributes as a constant
+    @param   StartupInfo    as a TStartupInfo as a constant
+    @param   hRead          as a THandle as a constant
+
+  **)
+  Procedure RunProcess(Const SecurityAttrib : TSecurityAttributes; Const StartupInfo : TStartupInfo;
+    Const hRead : THandle);
+
+  Const
+    iWaitIntervalInMS = 50;
+
+  Var
+    ProcessInfo : TProcessInformation;
+    slLines : TStringList;
+    iExitCode : Cardinal;
+  
+  Begin
+    Win32Check(CreateProcess(PChar(Process.strEXE),
+      PChar('"' + Process.strEXE + '" ' + Process.strParams), @SecurityAttrib,
+      Nil, True, CREATE_NEW_CONSOLE, Nil, PChar(Process.strDir), StartupInfo, ProcessInfo));
+    Try
+      slLines := TStringList.Create;
+      Try
+        While WaitforSingleObject(ProcessInfo.hProcess, iWaitIntervalInMS) = WAIT_TIMEOUT Do
+          Begin
+            ProcessOutput(slLines, hRead);
+            If boolAbort Then
+              Begin
+                TerminateProcess(ProcessInfo.hProcess, 0);
+                Break;
+              End;
+          End;
+        ProcessOutput(slLines, hRead, True);
+      Finally
+        slLines.Free;
+      End;
+      If GetExitCodeProcess(ProcessInfo.hProcess, iExitCode) Then
+        Inc(Result, iExitCode)
+    Finally
+      Win32Check(CloseHandle(ProcessInfo.hThread));
+      Win32Check(CloseHandle(ProcessInfo.hProcess));
+    End;
+  End;
+
+Var
+  hRead, hWrite : THandle;
+  SecurityAttrib : TSecurityAttributes;
+  StartupInfo : TStartupInfo;
+
+Begin
+  Result := 0;
+  boolAbort := False;
+  ConfigSecurityAttrib(SecurityAttrib);
+  Win32Check(CreatePipe(hRead, hWrite, @SecurityAttrib, iPipeSize));
+  Try
+    If Process.boolEnabled Then
+      Try
+        CheckProcess;
+        ConfigStartUp(StartupInfo, hWrite);
+        RunProcess(SecurityAttrib, StartupInfo, hRead);
+      Except
+        On E : EDGHCreateProcessException Do
+          If Assigned(ProcessMsgHandler) Then
+            Begin
+              ProcessMsgHandler(E.Message, boolAbort);
+              Inc(Result);
+            End;
+      End;
+  Finally
+    Win32Check(CloseHandle(hWrite));
+    Win32Check(CloseHandle(hRead));
+  End;
+End;
+
+(**
+
   This method updates the ProjectNamePattern macro in the revisiob query while maintaining the DBGrids
   column widths.
 
@@ -831,7 +839,8 @@ Var
 Begin
   FGitPI.strDir := FNewGitRepoPath;
   FGitPI.strParams := strCmdParams;
-  ProcessMsgevent(Format('%s%s %s', [FGitPI.strDir, ExtractFileName(FGitPI.strEXE), FGitPI.strParams]), boolAbort);
+  ProcessMsgevent(Format('%s%s %s', [FGitPI.strDir, ExtractFileName(FGitPI.strEXE), FGitPI.strParams]),
+    boolAbort, mtTitle);
   FLastMessage := '';
   iResult := DGHCreateProcess(FGitPI, ProcessMsgEvent, IdleEvent);
   If iResult <> 0 Then
@@ -902,7 +911,7 @@ Const
 
 Begin
   SaveSettings;
-  mmoGitOutput.Lines.SaveToFile(FNewGitRepoPath + strLog);
+  lbxGitOutput.Items.SaveToFile(FNewGitRepoPath + strLog);
   FRelativePaths.Free;
   FFileNames.Free;
 End;
@@ -920,6 +929,56 @@ Procedure TfrmJEDIVCSToGit.IdleEvent;
 
 Begin
   Application.ProcessMessages;
+End;
+
+(**
+
+  This is an on draw item event handler for the Git Output listbox.
+
+  @precon  None.
+  @postcon Custom Draws the list box items to show GIT commands differently from the rest of the
+           information.
+
+  @nocheck MissingConstInParam 
+  @nohint  Control
+  
+  @param   Control as a TWinControl
+  @param   Index   as an Integer
+  @param   Rect    as a TRect
+  @param   State   as a TOwnerDrawState
+
+**)
+Procedure TfrmJEDIVCSToGit.lbxGitOutputDrawItem(Control: TWinControl; Index: Integer; Rect: TRect;
+  State: TOwnerDrawState);
+
+Var
+  strText: String;
+  
+Begin
+  If odSelected In State Then
+    Begin
+      lbxGitOutput.Canvas.Brush.Color := clHighlight;
+      lbxGitOutput.Canvas.FillRect(Rect);
+      lbxGitOutput.Canvas.FrameRect(Rect);
+    End Else
+    Begin
+      lbxGitOutput.Canvas.Brush.Color := clWindow;
+      lbxGitOutput.Canvas.FillRect(Rect);
+    End;
+  Case NativeUInt(lbxGitOutput.Items.Objects[Index]) Of
+    NativeUInt(mtTitle):
+      Begin
+        lbxGitOutput.Canvas.Font.Style := [fsBold];
+        lbxGitOutput.Canvas.Font.Color := clMaroon;
+      End;
+  Else
+    lbxGitOutput.Canvas.Font.Style := [];
+    lbxGitOutput.Canvas.Font.Color := clNavy;
+  End;
+  If odSelected In State Then
+    lbxGitOutput.Canvas.Font.Color := clHighlightText;
+  strText := lbxGitOutput.Items[Index];
+  lbxGitOutput.Canvas.TextRect(Rect, strText, [tfLeft, tfVerticalCenter]);
 End;
 
 (**
@@ -955,8 +1014,8 @@ Begin
     edtProjectNamePattern.Text := iniFile.ReadString(strSetupIniSection, strProjectNamePatternKey, '');
     edtNewGitRepoPath.Text := iniFile.ReadString(strSetupIniSection, strNewRepoPathKey, '');
     edtOldGitRepoPath.Text := iniFile.ReadString(strSetupIniSection, strOldRepoPathKey, '');
-    mmoGitOutput.Height := iniFile.ReadInteger(strSetupIniSection, strOutputHeightKey,
-      mmoGitOutput.Height);
+    lbxGitOutput.Height := iniFile.ReadInteger(strSetupIniSection, strOutputHeightKey,
+      lbxGitOutput.Height);
     BlobsGrid.Height := iniFile.ReadInteger(strSetupIniSection, strBlobGridHeightKey, BlobsGrid.Height);
   Finally
     iniFile.Free;
@@ -966,19 +1025,20 @@ End;
 
 (**
 
-  This method processses a message from a command line and outputs the information to the output
-  log.
+  This method processses a message from a command line and outputs the information to the output log.
 
   @precon  None.
   @postcon Command line process information is output to the output log.
 
-  @nohint boolAbort
+  @nohint  boolAbort
 
   @param   strMsg    as a String as a constant
   @param   boolAbort as a Boolean as a reference
+  @param   MsgType   as a TMsgType as a constant
 
 **)
-Procedure TfrmJEDIVCSToGit.ProcessMsgevent(Const strMsg: String; Var boolAbort: Boolean);
+Procedure TfrmJEDIVCSToGit.ProcessMsgevent(Const strMsg: String; Var boolAbort: Boolean;
+  Const MsgType : TMsgType = mtInformation);
 
 Var
   sl : TStringList;
@@ -990,7 +1050,8 @@ Begin
     sl.Text := strMsg;
     For iLine := 0 To sl.Count - 1 Do
       Begin
-        mmoGitOutput.Lines.Append(sl[iLine]);
+        lbxGitOutput.Items.AddObject(sl[iLine], TObject(MsgType));
+        lbxGitOutput.ItemIndex := Pred(lbxGitOutput.Items.Count);
         If sl[iLine] <> '' Then
           Begin
             If FLastMessage <> '' Then
@@ -1033,7 +1094,7 @@ Begin
     iniFile.WriteString(strSetupIniSection, strProjectNamePatternKey, edtProjectNamePattern.Text);
     iniFile.WriteString(strSetupIniSection, strNewRepoPathKey, edtNewGitRepoPath.Text);
     iniFile.WriteString(strSetupIniSection, strOldRepoPathKey, edtOldGitRepoPath.Text);
-    iniFile.WriteInteger(strSetupIniSection, strOutputHeightKey, mmoGitOutput.Height);
+    iniFile.WriteInteger(strSetupIniSection, strOutputHeightKey, lbxGitOutput.Height);
     iniFile.WriteInteger(strSetupIniSection, strBlobGridHeightKey, BlobsGrid.Height);
     iniFile.UpdateFile;
   Finally

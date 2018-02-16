@@ -258,20 +258,22 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
         TitleFont.Style = []
       end
     end
-    object mmoGitOutput: TMemo
+    object lbxGitOutput: TListBox
       Left = 1
       Top = 378
       Width = 838
       Height = 108
+      Style = lbOwnerDrawFixed
       Align = alBottom
       Font.Charset = ANSI_CHARSET
       Font.Color = clWindowText
       Font.Height = -15
       Font.Name = 'Consolas'
       Font.Style = []
+      ItemHeight = 18
       ParentFont = False
-      ScrollBars = ssBoth
       TabOrder = 1
+      OnDrawItem = lbxGitOutputDrawItem
     end
   end
   object FDConnection: TFDConnection
