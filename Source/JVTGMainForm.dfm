@@ -52,6 +52,10 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
         end
         item
           SizeStyle = ssAbsolute
+          Value = 75.000000000000000000
+        end
+        item
+          SizeStyle = ssAbsolute
           Value = 110.000000000000000000
         end>
       ControlCollection = <
@@ -76,7 +80,7 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
           Row = 0
         end
         item
-          Column = 6
+          Column = 7
           Control = btnGetRevisions
           Row = 0
         end
@@ -89,6 +93,11 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
           Column = 1
           Control = edtProjectNamePattern
           Row = 0
+        end
+        item
+          Column = 6
+          Control = chkStatus
+          Row = 0
         end>
       RowCollection = <
         item
@@ -100,16 +109,16 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
         31)
       object edtNewGitRepoPath: TEdit
         AlignWithMargins = True
-        Left = 604
+        Left = 556
         Top = 4
-        Width = 118
+        Width = 92
         Height = 23
         Align = alClient
         TabOrder = 0
       end
       object lblNewGitRepoPath: TLabel
         AlignWithMargins = True
-        Left = 484
+        Left = 436
         Top = 4
         Width = 114
         Height = 23
@@ -119,7 +128,7 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
       end
       object lblOldGitRepoPath: TLabel
         AlignWithMargins = True
-        Left = 245
+        Left = 223
         Top = 4
         Width = 109
         Height = 23
@@ -129,15 +138,15 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
       end
       object edtOldGitRepoPath: TEdit
         AlignWithMargins = True
-        Left = 360
+        Left = 338
         Top = 4
-        Width = 118
+        Width = 92
         Height = 23
         Align = alClient
         TabOrder = 1
       end
       object btnGetRevisions: TButton
-        Left = 731
+        Left = 732
         Top = 3
         Width = 97
         Height = 25
@@ -160,12 +169,22 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
         AlignWithMargins = True
         Left = 139
         Top = 4
-        Width = 100
+        Width = 78
         Height = 23
         Align = alClient
         TabOrder = 3
         Text = 'edtProjectNamePattern'
         OnExit = edtProjectNamePatternExit
+      end
+      object chkStatus: TCheckBox
+        AlignWithMargins = True
+        Left = 654
+        Top = 4
+        Width = 69
+        Height = 23
+        Align = alClient
+        Caption = 'Status'
+        TabOrder = 4
       end
     end
   end

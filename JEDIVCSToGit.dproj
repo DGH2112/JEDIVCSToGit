@@ -113,6 +113,10 @@
             <FormType>dfm</FormType>
         </DCCReference>
         <DCCReference Include="Source\JVTGTypes.pas"/>
+        <DCCReference Include="Source\JVTGGitErrorForm.pas">
+            <Form>frmGITError</Form>
+            <FormType>dfm</FormType>
+        </DCCReference>
         <None Include="FireDACConfig.ini"/>
         <BuildConfiguration Include="Release">
             <Key>Cfg_2</Key>

@@ -5,7 +5,7 @@
 
   @Author  David Hoyle
   @Version 1.0
-  @Date    16 Feb 2018
+  @Date    17 Feb 2018
   
 **)
 Unit JVTGMainForm;
@@ -72,6 +72,7 @@ Type
     lblOldGitRepoPath: TLabel;
     edtOldGitRepoPath: TEdit;
     lbxGitOutput: TListBox;
+    chkStatus: TCheckBox;
     Procedure btnGetRevisionsClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
@@ -121,6 +122,7 @@ Type
     Function  CalcTime(Const iTime : UInt64): String;
     Function  DGHCreateProcess(Var Process : TProcessInfo; Const ProcessMsgHandler : TProcessMsgHandler;
       Const IdleHandler : TIdleHandler) : Integer;
+    Function GetActualPathAndFileCase(Const strRelPathFile: String) : String;
   Public
   End;
 
@@ -138,7 +140,10 @@ Uses
   {$ENDIF}
   System.IniFiles,
   System.Zip,
-  System.UITypes, JVTGRelativePathForm, JVTGTypes;
+  System.UITypes,
+  JVTGRelativePathForm,
+  JVTGTypes, 
+  JVTGGitErrorForm;
 
 ResourceString
   (** A resource string to say that the directory was not found. **)
@@ -177,6 +182,8 @@ Const
   strBlobGridHeightKey = 'BlobGridHeight';
   (** A constant double for the percentable multiplier. **)
   dblPercentageMultiplier = 100.0;
+  (** An ini key for whether the GIT STATUS should be shown. **)
+  strShowStatusKey = 'ShowStatus';
 
 Function DGHFindOnPath(var strEXEName : String; Const strDirs : String) : Boolean; Forward;
 
@@ -336,11 +343,12 @@ Const
     Const
       strModuleName = 'Module Name';
       strExtension = 'Extension';
-      strMoveParams = 'mv -v %s%s %s%s';
+      strMoveParams = 'mv -v "%s" "%s%s"';
     
     Var
       strOldFileName: String;
       strRepoFileName: String;
+      strActualPathAndFile: String;
     
     Begin
       strRepoFileName :=
@@ -351,8 +359,12 @@ Const
         If CompareText(strOldFileName, strFileToExtract) <> 0 Then
           Begin
             CodeSite.Send(Format(strFileNeedsRenaming, [strOldFileName, strFileToExtract]));
-            ExecuteGit(Format(strMoveParams, [strSubDir, strOldFileName, strSubDir, strFileToExtract]));
-            ExecuteGit(strGitStatus);
+            strActualPathAndFile := strSubDir + strOldFileName;
+            strActualPathAndFile := GetActualPathAndFileCase(strActualPathAndFile);
+            ExecuteGit(Format(strMoveParams, [strActualPathAndFile,
+              ExtractFilePath(strActualPathAndFile), strFileToExtract]));
+            If chkStatus.Checked Then
+              ExecuteGit(strGitStatus);
           End;
       FFileNames.Values[strRepoFilename] := strFileToExtract;
     End;
@@ -362,7 +374,7 @@ Const
   
   Const
     strFileData = 'FileData';
-    strAddParams = 'add -v %s';
+    strAddParams = 'add -v "%s"';
     strPath = 'path';
     strModuleName = 'Module Name';
 
@@ -385,10 +397,9 @@ Const
           Z.Open(strZipFileName, zmRead);
           For iFile := 0 To Z.FileCount - 1 Do
             Begin
-              RepoData.FOLDGitRepoPath := FOldGitRepoPath;
-              RepoData.FNEWGitRepoPath := FNewGitRepoPath;
-              RepoData.FModulePath := RevisionsDataSource.Dataset.FieldByName(strPath).AsString;
-              RepoData.FModuleName := RevisionsDataSource.Dataset.FieldByName(strModuleName).AsString;
+              RepoData.Create(FOldGitRepoPath, FNewGitRepoPath,
+                RevisionsDataSource.Dataset.FieldByName(strPath).AsString,
+                RevisionsDataSource.Dataset.FieldByName(strModuleName).AsString);
               If TfrmExtractRelPath.Execute(FRelativePaths, RepoData, strSubDir) Then
                 Begin
                   CheckFileNamesForRename(strSubDir, Z.FileName[iFile]);
@@ -396,10 +407,11 @@ Const
                   ProcessMsgevent(Format(strExtracting, [FNewGitRepoPath + strSubDir + Z.FileName[iFile]]),
                     boolAbort);
                   strActualFileCase := strSubDir + Z.FileName[iFile];
-                  //: @bug Need to get the actual path + filename case so git add will stage the file
+                  strActualFileCase := GetActualPathAndFileCase(strActualFileCase);
                   ExecuteGit(Format(strAddParams, [strActualFileCase]));
                   Inc(Result);
-                  ExecuteGit(strGitStatus);
+                  If chkStatus.Checked Then
+                    ExecuteGit(strGitStatus);
                 End;
             End;
           Z.Close;
@@ -436,7 +448,8 @@ Const
         ProcessBlobs(strZipFileName);
         CommitToGit(RevisionsDataSource.DataSet.FieldByName(strComment_i).AsString,
           RevisionsDataSource.DataSet.FieldByName(strTSTAMP).AsDateTime);
-        ExecuteGit(strGitStatus);
+        If chkStatus.Checked Then
+          ExecuteGit(strGitStatus);
         Inc(FItem);
         UpdateStatus;
         RevisionsDataSource.DataSet.Next;
@@ -847,7 +860,7 @@ Begin
   FLastMessage := '';
   iResult := DGHCreateProcess(FGitPI, ProcessMsgEvent, IdleEvent);
   If iResult <> 0 Then
-    Case MessageDlg(Format(strMsg, [strCmdParams, FLastMessage]), mtError, [mbIgnore, mbAbort], 0) Of
+    Case TfrmGITError.Execute(Format(strMsg, [strCmdParams, FLastMessage])) Of
       mrAbort: Abort;
     End;
   ProcessMsgevent(#13#10, boolAbort);
@@ -917,6 +930,55 @@ Begin
   lbxGitOutput.Items.SaveToFile(FNewGitRepoPath + strLog);
   FRelativePaths.Free;
   FFileNames.Free;
+End;
+
+(**
+
+  This method searches for the actual case for the file path and filename so that GIT ADD does not fail
+  to add the file.
+
+  @precon  None.
+  @postcon Returns the correct cased file path and name.
+
+  @param   strRelPathFile as a String as a constant
+  @return  a String
+
+**)
+Function TfrmJEDIVCSToGit.GetActualPathAndFileCase(Const strRelPathFile: String) : String;
+
+Var
+  sl : TStringList;
+  i: Integer;
+  strCurrentPath : String;
+  recSearch: TSearchRec;
+  iResult: Integer;
+  
+Begin
+  Result := '';
+  sl := TStringList.Create;
+  Try
+    sl.Text := StringReplace(strRelPathFile, '\', #13#10, [rfReplaceAll]);
+    strCurrentPath := FNewGitRepoPath;
+    For i := 0 To sl.Count - 1 Do
+      Begin
+        If (Result <> '') And (Result[Length(Result)] <> '\') Then
+          Result := Result + '\';
+        If (strCurrentPath <> '') And (strCurrentPath[Length(strCurrentPath)] <> '\') Then
+          strCurrentPath := strCurrentPath + '\';
+        iResult := FindFirst(strCurrentPath + sl[i], faAnyFile, recSearch);
+        Try
+          If iResult = 0 Then
+            Begin
+              Result := Result + recSearch.Name;
+              strCurrentPath := strCurrentPath + recSearch.Name;
+            End;
+        Finally
+          FindClose(recSearch);
+        End;
+      End;
+  Finally
+    sl.Free;
+  End;
 End;
 
 (**
@@ -1020,6 +1082,7 @@ Begin
     lbxGitOutput.Height := iniFile.ReadInteger(strSetupIniSection, strOutputHeightKey,
       lbxGitOutput.Height);
     BlobsGrid.Height := iniFile.ReadInteger(strSetupIniSection, strBlobGridHeightKey, BlobsGrid.Height);
+    chkStatus.Checked := iniFile.ReadBool(strSetupINISection, strShowStatusKey, True);
   Finally
     iniFile.Free;
   End;
@@ -1099,6 +1162,7 @@ Begin
     iniFile.WriteString(strSetupIniSection, strOldRepoPathKey, edtOldGitRepoPath.Text);
     iniFile.WriteInteger(strSetupIniSection, strOutputHeightKey, lbxGitOutput.Height);
     iniFile.WriteInteger(strSetupIniSection, strBlobGridHeightKey, BlobsGrid.Height);
+    iniFile.WriteBool(strSetupINISection, strShowStatusKey, chkStatus.Checked);
     iniFile.UpdateFile;
   Finally
     iniFile.Free;
