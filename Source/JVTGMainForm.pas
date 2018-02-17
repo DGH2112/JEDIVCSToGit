@@ -143,7 +143,8 @@ Uses
   System.UITypes,
   JVTGRelativePathForm,
   JVTGTypes, 
-  JVTGGitErrorForm;
+  JVTGGitErrorForm, 
+  JVTGFunctions;
 
 ResourceString
   (** A resource string to say that the directory was not found. **)
@@ -882,11 +883,26 @@ ResourceString
   strPleaseSpecifyFireDACINIFileAsFirstParameter = 'Please specify a FireDAC INI file as the first ' + 
     'parameter!';
   strCouldNotLoadINIFile = 'Could not load the INI file "%s"';
+  strJEDIVCSToGitBuild = 'JEDI VCS to Git %d.%d%s (Build %d.%d.%d.%d): ';
 
 Const
+  strBugFix = ' abcedfghijklmnopqrstuvwxyz';
   strGITExe = 'GIT.exe';
+  
+Var
+  BuildInfo: TJVTGBuildInfo;
 
 Begin
+  GetBuildInfo(BuildInfo);
+  Caption := Format(strJEDIVCSToGitBuild, [
+      BuildInfo.FMajor,
+      BuildInfo.FMinor,
+      strBugFix[BuildInfo.FRelease + 1],
+      BuildInfo.FMajor,
+      BuildInfo.FMinor,
+      BuildInfo.FRelease,
+      BuildInfo.FBuild
+    ]);
   FFilenames := TStringList.Create;
   FFileNames.Duplicates := dupIgnore;
   FItemCount := 0;

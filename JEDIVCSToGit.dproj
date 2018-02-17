@@ -104,6 +104,9 @@
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
+        <RcCompile Include="JVTGITHVerInfo.RC">
+            <Form>JVTGITHVerInfo.res</Form>
+        </RcCompile>
         <DCCReference Include="Source\JVTGMainForm.pas">
             <Form>frmJEDIVCSToGit</Form>
             <FormType>dfm</FormType>
@@ -117,6 +120,7 @@
             <Form>frmGITError</Form>
             <FormType>dfm</FormType>
         </DCCReference>
+        <DCCReference Include="Source\JVTGFunctions.pas"/>
         <None Include="FireDACConfig.ini"/>
         <BuildConfiguration Include="Release">
             <Key>Cfg_2</Key>
@@ -146,6 +150,12 @@
                 </Excluded_Packages>
             </Delphi.Personality>
             <Deployment Version="3">
+                <DeployFile LocalName="JVTGITHVerInfo.RC" Configuration="Debug" Class="ProjectFile">
+                    <Platform Name="Win32">
+                        <RemoteDir>.\</RemoteDir>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
                 <DeployFile LocalName="Win32\Debug\JEDIVCSToGit.exe" Configuration="Debug" Class="ProjectOutput">
                     <Platform Name="Win32">
                         <RemoteName>JEDIVCSToGit.exe</RemoteName>
