@@ -114,14 +114,14 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
         Width = 92
         Height = 23
         Align = alClient
-        TabOrder = 0
+        TabOrder = 3
       end
       object lblNewGitRepoPath: TLabel
         AlignWithMargins = True
         Left = 436
         Top = 4
         Width = 114
-        Height = 26
+        Height = 23
         Align = alClient
         Caption = 'New Git Repo Path'
         Layout = tlCenter
@@ -131,7 +131,7 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
         Left = 223
         Top = 4
         Width = 109
-        Height = 26
+        Height = 23
         Align = alClient
         Caption = 'Old Git Repo Path'
         Layout = tlCenter
@@ -143,7 +143,7 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
         Width = 92
         Height = 23
         Align = alClient
-        TabOrder = 1
+        TabOrder = 2
       end
       object btnGetRevisions: TButton
         Left = 732
@@ -152,7 +152,7 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
         Height = 25
         Anchors = []
         Caption = 'Get Revisions'
-        TabOrder = 2
+        TabOrder = 0
         OnClick = btnGetRevisionsClick
       end
       object lblProjectNamePattern: TLabel
@@ -160,7 +160,7 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
         Left = 4
         Top = 4
         Width = 129
-        Height = 26
+        Height = 23
         Align = alClient
         Caption = 'Project Name Pattern'
         Layout = tlCenter
@@ -172,7 +172,7 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
         Width = 78
         Height = 23
         Align = alClient
-        TabOrder = 3
+        TabOrder = 1
         Text = 'edtProjectNamePattern'
         OnExit = edtProjectNamePatternExit
       end
@@ -207,7 +207,7 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
     Height = 487
     Align = alClient
     Caption = 'pnlMain'
-    TabOrder = 2
+    TabOrder = 1
     object Splitter: TSplitter
       Left = 1
       Top = 375
@@ -241,6 +241,7 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
         Width = 838
         Height = 257
         Align = alClient
+        Color = clBtnFace
         DataSource = RevisionsDataSource
         TabOrder = 0
         TitleFont.Charset = DEFAULT_CHARSET
@@ -248,6 +249,7 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
         TitleFont.Height = -13
         TitleFont.Name = 'Tahoma'
         TitleFont.Style = []
+        OnDrawDataCell = DBGridDrawDataCell
       end
       object BlobsGrid: TDBGrid
         Left = 0
@@ -262,6 +264,7 @@ object frmJEDIVCSToGit: TfrmJEDIVCSToGit
         TitleFont.Height = -13
         TitleFont.Name = 'Tahoma'
         TitleFont.Style = []
+        OnDrawDataCell = DBGridDrawDataCell
       end
     end
     object lbxGitOutput: TListBox
