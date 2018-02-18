@@ -80,6 +80,8 @@ Type
     procedure StatusBarDrawPanel(StatusBar: TStatusBar; Panel: TStatusPanel; const Rect: TRect);
     procedure lbxGitOutputDrawItem(Control: TWinControl; Index: Integer; Rect: TRect;
       State: TOwnerDrawState);
+    procedure DBGridDrawDataCell(Sender: TObject; const Rect: TRect; Field: TField;
+      State: TGridDrawState);
   Strict Private
     Type
       (** A record to describe the information required by DGHCreateProcess. @nohints **)
@@ -575,6 +577,59 @@ Begin
   strCleanComment := StringReplace(strCleanComment, #13, '', [rfReplaceAll]);
   strCleanComment := StringReplace(strCleanComment, #10, '\n', [rfReplaceAll]);
   ExecuteGit(Format(strCommitDate, [FormatDateTime(strDateFmt, dtCommitDateTime), strCleanComment]));
+End;
+
+(**
+
+  This is an on Draw Data Cell event handler for the DBGrids.
+
+  @precon  None.
+  @postcon Draws the grid data with clWindow background.
+
+  @param   Sender as a TObject
+  @param   Rect   as a TRect as a constant
+  @param   Field  as a TField
+  @param   State  as a TGridDrawState
+
+**)
+Procedure TfrmJEDIVCSToGit.DBGridDrawDataCell(Sender: TObject; Const Rect: TRect; Field: TField;
+  State: TGridDrawState);
+
+ResourceString
+  strBlob = '(Blob)';
+
+Const
+  iPaddding = 5;
+  
+Var
+  C: TCanvas;
+  strText: String;
+  R: TRect;
+
+Begin
+  C := (Sender As TDBGrid).Canvas;
+  If gdSelected In State Then
+    Begin
+      C.Brush.Color := clHighlight;
+      C.Font.Color := clHighlightText;
+    End Else
+    Begin
+      C.Brush.Color := clWindow;
+      C.Font.Color := clWindowText;
+    End;
+  C.FillRect(Rect);
+  Case Field.DataType Of
+    ftBlob: strText := strBlob;
+  Else
+    strText := Field.AsString;
+  End;
+  R := Rect;
+  InflateRect(R, -iPaddding, 0);
+  Case Field.Alignment Of
+    taLeftJustify:  C.TextRect(R, strText, [tfLeft, tfVerticalCenter]);
+    taRightJustify: C.TextRect(R, strText, [tfRight, tfVerticalCenter]);
+    taCenter:       C.TextRect(R, strText, [tfCenter, tfVerticalCenter]);
+  End;
 End;
 
 (**
