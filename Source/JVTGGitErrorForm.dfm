@@ -2,8 +2,8 @@ object frmGITError: TfrmGITError
   Left = 0
   Top = 0
   Caption = 'GIT Error'
-  ClientHeight = 295
-  ClientWidth = 588
+  ClientHeight = 410
+  ClientWidth = 673
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -13,15 +13,15 @@ object frmGITError: TfrmGITError
   OldCreateOrder = False
   Position = poMainFormCenter
   DesignSize = (
-    588
-    295)
+    673
+    410)
   PixelsPerInch = 96
   TextHeight = 16
   object mmoMessage: TMemo
     Left = 8
     Top = 8
-    Width = 572
-    Height = 245
+    Width = 657
+    Height = 360
     Anchors = [akLeft, akTop, akRight, akBottom]
     Font.Charset = ANSI_CHARSET
     Font.Color = clWindowText
@@ -33,12 +33,13 @@ object frmGITError: TfrmGITError
     ParentColor = True
     ParentFont = False
     ReadOnly = True
+    ScrollBars = ssBoth
     TabOrder = 0
     WordWrap = False
   end
   object btnIgnore: TBitBtn
-    Left = 404
-    Top = 259
+    Left = 489
+    Top = 374
     Width = 85
     Height = 28
     Anchors = [akRight, akBottom]
@@ -66,8 +67,8 @@ object frmGITError: TfrmGITError
     TabOrder = 1
   end
   object btnAbort: TBitBtn
-    Left = 495
-    Top = 259
+    Left = 580
+    Top = 374
     Width = 85
     Height = 28
     Anchors = [akRight, akBottom]

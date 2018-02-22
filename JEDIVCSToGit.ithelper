@@ -10,13 +10,13 @@ CompileWithBRCC32=0
 MajorVer=1
 MinorVer=0
 ReleaseVer=0
-BuildVer=123
+BuildVer=125
 ResourceName=JVTGITHVerInfo
 
 [VersionInfo]
 CompanyName=Season's Fall Music
 FileDescription=JEDIVCSToGit: A project to migrate JEDI VCS repositories to GIT.
-FileVersion=1.0.0.123
+FileVersion=1.0.0.125
 InternalName=JEDIVCSToGit
 LegalCopyright=Season's Fall Music
 LegalTrademarks=Season's Fall Music
